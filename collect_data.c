@@ -16,23 +16,19 @@
 #include <string.h>
 
 #define MAX_PACKETS 4
-#define MAX_PACKET_LOST 5
+#define MAX_PACKET_LOST 20
 
 static struct collect_conn tc;
 static struct broadcast_conn bc;
 
 static packet_stats_t packets[MAX_PACKETS];
 static datacom_neighbor_t* neighbor_list = NULL;
+static uint8_t neighbor_list_size = 0;
 
 static uint8_t packets_received = 0;
 static uint8_t current_message_id = 0;
 
 static uint8_t max_total_packet = 0;
-
-static char* broadcast_tag = "bdc_m\0";
-static int broadcast_tag_length = 5;
-
-
 
 /*---------------------------------------------------------------------------*/
 PROCESS(example_collect_process, "Collect information between nodes");
@@ -43,25 +39,52 @@ static void
 recv(const rimeaddr_t *originator, uint8_t seqno, uint8_t hops)
 {
 
-    void* addr = packetbuf_dataptr();
-    uint8_t mrp = *((uint8_t*) addr);
-    packet_stats_t* t = (packet_stats_t*) malloc(sizeof (packet_stats_t) * mrp);
-    printf("Sink received: %d packets \n", mrp);
     int i;
-    for (i = 0; i < mrp; ++i) {
-        packet_stats_t tmp;
-        memcpy(&tmp, addr + sizeof (uint8_t) + sizeof (packet_stats_t) * i, sizeof (packet_stats_t));
-        t[i] = tmp;
-    }
+    void* addr = packetbuf_dataptr();
+    uint8_t current_offset = sink_tag_length;
+    printf("AAA %s \n", (char*) addr);
+    if (strncmp((char*) addr, sink_packet_tag, sink_tag_length) == 0) {
+        uint8_t mrp = *((uint8_t*) (addr + current_offset));
+        current_offset += sizeof (uint8_t);
 
-    for (i = 0; i < mrp; ++i) {
-        printf("received from %d.%d  data: : from %d.%d  to %d.%d  { %d  %d  }\n",
-               originator->u8[0], originator->u8[1],
-               t[i].from.u8[0], t[i].from.u8[1],
-               t[i].to.u8[0], t[i].to.u8[1], t[i].lqi, t[i].rssi);
-    }
+        packet_stats_t* t = (packet_stats_t*) malloc(sizeof (packet_stats_t) * mrp);
+        printf("Sink received: %d packets \n", mrp);
+        for (i = 0; i < mrp; ++i) {
+            packet_stats_t tmp;
+            memcpy(&tmp, addr + current_offset, sizeof (packet_stats_t));
+            t[i] = tmp;
+            current_offset += sizeof (packet_stats_t);
+        }
 
-    free(t);
+        for (i = 0; i < mrp; ++i) {
+            printf("received from %d.%d  data: : from %d.%d  to %d.%d  { %d  %d  }\n",
+                   originator->u8[0], originator->u8[1],
+                   t[i].from.u8[0], t[i].from.u8[1],
+                   t[i].to.u8[0], t[i].to.u8[1], t[i].lqi, t[i].rssi);
+        }
+
+        free(t);
+    }
+    else if (strncmp((char*) addr, sink_packet_lost_tag, sink_tag_length) == 0) {
+        uint8_t npackets = *((uint8_t*) (addr + current_offset));
+        current_offset += sizeof (uint8_t);
+
+        datacom_packet_lost_inf_t* p = (datacom_packet_lost_inf_t*) malloc(sizeof (datacom_packet_lost_inf_t) * npackets);
+        printf("Sink received %d lost packet information \n", npackets);
+        for (i = 0; i < npackets; ++i) {
+            memcpy(&p[i], addr + current_offset, sizeof (datacom_packet_lost_inf_t));
+            current_offset += sizeof (datacom_packet_lost_inf_t);
+        }
+
+        for (i = 0; i < npackets; ++i) {
+            printf("packet lost information : from %d.%d  to %d.%d  total:  %d  , lost: %d \n ",
+                   p[i].from.u8[0], p[i].from.u8[1],
+                   p[i].to.u8[0], p[i].to.u8[1],
+                   p[i].total_packets, p[i].lost_packets);
+        }
+
+        free(p);
+    }
 }
 
 static void
@@ -144,11 +167,17 @@ PROCESS_THREAD(example_collect_process, ev, data)
         packetbuf_set_datalen(strlen(broadcast_tag) + sizeof (uint8_t));
 
         broadcast_send(&bc);
+        max_total_packet += 1;
 
         if (packets_received >= MAX_PACKETS) {
             send_packets_to_sink();
             packets_received = 0;
 
+        }
+
+        if (max_total_packet >= MAX_PACKET_LOST) {
+            send_packet_lost_inf_to_sink();
+            max_total_packet = 0;
         }
 
     }
@@ -161,10 +190,42 @@ PROCESS_THREAD(example_collect_process, ev, data)
 /*---------------------------------------------------------------------------*/
 
 static void
+send_packet_lost_inf_to_sink()
+{
+    printf("sending packet lost information to the sink \n");
+    int i;
+    uint8_t curr_packet_length = 0;
+
+    packetbuf_clear();
+    void* addr = packetbuf_dataptr();
+
+    memcpy(addr + curr_packet_length, (void*) sink_packet_lost_tag, sink_tag_length);
+    curr_packet_length += sink_tag_length;
+    memcpy(addr + curr_packet_length, (void*) &neighbor_list_size, sizeof (uint8_t));
+    curr_packet_length += sizeof (uint8_t);
+
+    datacom_neighbor_t* curr_el = neighbor_list;
+    for (i = 0; i < neighbor_list_size; ++i) {
+        datacom_packet_lost_inf_t p;
+        p.from = curr_el->sender;
+        p.to = rimeaddr_node_addr;
+        p.lost_packets = curr_el->lost_packets;
+        p.total_packets = curr_el->total_packets;
+        memcpy(addr + curr_packet_length, (void*) &p, sizeof (datacom_packet_lost_inf_t));
+        curr_packet_length += sizeof (datacom_packet_lost_inf_t);
+    }
+    packetbuf_set_datalen(curr_packet_length);
+
+    collect_send(&tc, 15);
+
+}
+
+static void
 send_packets_to_sink()
 {
     static rimeaddr_t oldparent;
     const rimeaddr_t *parent;
+    uint8_t curr_packet_length = 0;
 
     printf("%d.%d:  sending data to the sink\n", rimeaddr_node_addr.u8[0], rimeaddr_node_addr.u8[1]);
     if (packets_received <= 0)
@@ -173,12 +234,18 @@ send_packets_to_sink()
     packetbuf_clear();
 
     void* addr = packetbuf_dataptr();
-    memcpy(addr, (void*) &packets_received, sizeof (uint8_t));
+
+    memcpy(addr + curr_packet_length, (void*) sink_packet_tag, sink_tag_length);
+    curr_packet_length += sink_tag_length;
+    memcpy(addr + curr_packet_length, (void*) &packets_received, sizeof (uint8_t));
+    curr_packet_length += sizeof (uint8_t);
+
     int i;
     for (i = 0; i < packets_received; ++i) {
-        memcpy(addr + sizeof (uint8_t) + i * sizeof (packet_stats_t), (void*) &packets[i], sizeof (packet_stats_t));
+        memcpy(addr + curr_packet_length, (void*) &packets[i], sizeof (packet_stats_t));
+        curr_packet_length += sizeof (packet_stats_t);
     }
-    packetbuf_set_datalen(sizeof (uint8_t) + sizeof (packet_stats_t) * packets_received);
+    packetbuf_set_datalen(sink_tag_length + sizeof (uint8_t) + sizeof (packet_stats_t) * packets_received);
 
     collect_send(&tc, 10);
 
@@ -211,6 +278,7 @@ add_or_update_neighbor(rimeaddr_t addr, uint8_t total_packets, uint8_t lost_pack
     if (curr_element == NULL) {
         neighbor_list = n;
         neighbor_list->next = NULL;
+        neighbor_list_size += 1;
         return;
     }
 
@@ -228,6 +296,7 @@ add_or_update_neighbor(rimeaddr_t addr, uint8_t total_packets, uint8_t lost_pack
     prev_element->next = n;
     prev_element->next->next = NULL;
     n->next = NULL;
+    neighbor_list_size += 1;
 }
 
 static datacom_neighbor_t*
