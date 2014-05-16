@@ -16,16 +16,14 @@
 #include <string.h>
 
 #define MAX_PACKETS 4
-#define MAX_PACKET_LOST 20
+#define MAX_PACKET_LOST 10
 
 static struct collect_conn tc;
 static struct broadcast_conn bc;
 
-static packet_stats_t packets[MAX_PACKETS];
 static datacom_neighbor_t* neighbor_list = NULL;
 static uint8_t neighbor_list_size = 0;
 
-static uint8_t packets_received = 0;
 static uint8_t current_message_id = 0;
 
 static uint8_t max_total_packet = 0;
@@ -38,34 +36,10 @@ AUTOSTART_PROCESSES(&example_collect_process);
 static void
 recv(const rimeaddr_t *originator, uint8_t seqno, uint8_t hops)
 {
-
     int i;
     void* addr = packetbuf_dataptr();
     uint8_t current_offset = sink_tag_length;
-    printf("AAA %s \n", (char*) addr);
     if (strncmp((char*) addr, sink_packet_tag, sink_tag_length) == 0) {
-        uint8_t mrp = *((uint8_t*) (addr + current_offset));
-        current_offset += sizeof (uint8_t);
-
-        packet_stats_t* t = (packet_stats_t*) malloc(sizeof (packet_stats_t) * mrp);
-        printf("Sink received: %d packets \n", mrp);
-        for (i = 0; i < mrp; ++i) {
-            packet_stats_t tmp;
-            memcpy(&tmp, addr + current_offset, sizeof (packet_stats_t));
-            t[i] = tmp;
-            current_offset += sizeof (packet_stats_t);
-        }
-
-        for (i = 0; i < mrp; ++i) {
-            printf("received from %d.%d  data: : from %d.%d  to %d.%d  { %d  %d  }\n",
-                   originator->u8[0], originator->u8[1],
-                   t[i].from.u8[0], t[i].from.u8[1],
-                   t[i].to.u8[0], t[i].to.u8[1], t[i].lqi, t[i].rssi);
-        }
-
-        free(t);
-    }
-    else if (strncmp((char*) addr, sink_packet_lost_tag, sink_tag_length) == 0) {
         uint8_t npackets = *((uint8_t*) (addr + current_offset));
         current_offset += sizeof (uint8_t);
 
@@ -77,10 +51,11 @@ recv(const rimeaddr_t *originator, uint8_t seqno, uint8_t hops)
         }
 
         for (i = 0; i < npackets; ++i) {
-            printf("packet lost information : from %d.%d  to %d.%d  total:  %d  , lost: %d \n ",
+            printf("packet information : from %d.%d  to %d.%d  total:  %d  , lost: %d , {%d  %d} hops: %d  \n ",
                    p[i].from.u8[0], p[i].from.u8[1],
                    p[i].to.u8[0], p[i].to.u8[1],
-                   p[i].total_packets, p[i].lost_packets);
+                   p[i].total_packets, p[i].lost_packets,
+                   p[i].lqi, p[i].rssi, hops);
         }
 
         free(p);
@@ -99,32 +74,26 @@ broadcast_receive(struct broadcast_conn* c, const rimeaddr_t* from)
            rimeaddr_node_addr.u8[0], rimeaddr_node_addr.u8[1],
            from->u8[0], from->u8[1], rmes_id);
 
+    uint16_t lqi = packetbuf_attr(PACKETBUF_ATTR_LINK_QUALITY);
+    uint16_t rssi = packetbuf_attr(PACKETBUF_ATTR_RSSI);
+
     datacom_neighbor_t* n = get_neighbor_by_rimeaddr(*from);
     if (n == NULL) {
-        add_or_update_neighbor(*from, 0, 0, rmes_id);
+        add_or_update_neighbor(*from, 0, 0, rmes_id, lqi, rssi);
     }
     else if (n->last_packet_id < rmes_id) {
         n->lost_packets += rmes_id - n->last_packet_id - 1;
         printf("%d.%d total packets: %d  lost packets: %d  %d %d\n", n->sender.u8[0], n->sender.u8[1],
                n->total_packets, n->lost_packets, rmes_id, n->last_packet_id);
         n->total_packets = rmes_id;
-        add_or_update_neighbor(n->sender, n->total_packets, n->lost_packets, rmes_id);
+        add_or_update_neighbor(n->sender, n->total_packets, n->lost_packets, rmes_id, lqi, rssi);
     }
     else {
-        add_or_update_neighbor(n->sender, 0, 0, rmes_id);
+        add_or_update_neighbor(n->sender, 0, 0, rmes_id, lqi, rssi);
     }
 
     print_n();
 
-    packet_stats_t packet;
-    packet.from = *from;
-    packet.to = rimeaddr_node_addr;
-    packet.rssi = packetbuf_attr(PACKETBUF_ATTR_RSSI);
-    packet.lqi = packetbuf_attr(PACKETBUF_ATTR_LINK_QUALITY);
-    if (packets_received < MAX_PACKETS) {
-        packets[packets_received] = packet;
-        packets_received += 1;
-    }
 
 }
 
@@ -169,15 +138,11 @@ PROCESS_THREAD(example_collect_process, ev, data)
         broadcast_send(&bc);
         max_total_packet += 1;
 
-        if (packets_received >= MAX_PACKETS) {
-            send_packets_to_sink();
-            packets_received = 0;
-
-        }
-
+        printf("m number :%d \n", max_total_packet);
         if (max_total_packet >= MAX_PACKET_LOST) {
-            send_packet_lost_inf_to_sink();
+            send_packets_to_sink();
             max_total_packet = 0;
+//            clean_list();
         }
 
     }
@@ -190,7 +155,7 @@ PROCESS_THREAD(example_collect_process, ev, data)
 /*---------------------------------------------------------------------------*/
 
 static void
-send_packet_lost_inf_to_sink()
+send_packets_to_sink()
 {
     printf("sending packet lost information to the sink \n");
     int i;
@@ -199,7 +164,7 @@ send_packet_lost_inf_to_sink()
     packetbuf_clear();
     void* addr = packetbuf_dataptr();
 
-    memcpy(addr + curr_packet_length, (void*) sink_packet_lost_tag, sink_tag_length);
+    memcpy(addr + curr_packet_length, (void*) sink_packet_tag, sink_tag_length);
     curr_packet_length += sink_tag_length;
     memcpy(addr + curr_packet_length, (void*) &neighbor_list_size, sizeof (uint8_t));
     curr_packet_length += sizeof (uint8_t);
@@ -211,8 +176,11 @@ send_packet_lost_inf_to_sink()
         p.to = rimeaddr_node_addr;
         p.lost_packets = curr_el->lost_packets;
         p.total_packets = curr_el->total_packets;
+        p.lqi = curr_el->lqi;
+        p.rssi = curr_el->rssi;
         memcpy(addr + curr_packet_length, (void*) &p, sizeof (datacom_packet_lost_inf_t));
         curr_packet_length += sizeof (datacom_packet_lost_inf_t);
+        curr_el = curr_el->next;
     }
     packetbuf_set_datalen(curr_packet_length);
 
@@ -221,54 +189,16 @@ send_packet_lost_inf_to_sink()
 }
 
 static void
-send_packets_to_sink()
-{
-    static rimeaddr_t oldparent;
-    const rimeaddr_t *parent;
-    uint8_t curr_packet_length = 0;
-
-    printf("%d.%d:  sending data to the sink\n", rimeaddr_node_addr.u8[0], rimeaddr_node_addr.u8[1]);
-    if (packets_received <= 0)
-        return;
-
-    packetbuf_clear();
-
-    void* addr = packetbuf_dataptr();
-
-    memcpy(addr + curr_packet_length, (void*) sink_packet_tag, sink_tag_length);
-    curr_packet_length += sink_tag_length;
-    memcpy(addr + curr_packet_length, (void*) &packets_received, sizeof (uint8_t));
-    curr_packet_length += sizeof (uint8_t);
-
-    int i;
-    for (i = 0; i < packets_received; ++i) {
-        memcpy(addr + curr_packet_length, (void*) &packets[i], sizeof (packet_stats_t));
-        curr_packet_length += sizeof (packet_stats_t);
-    }
-    packetbuf_set_datalen(sink_tag_length + sizeof (uint8_t) + sizeof (packet_stats_t) * packets_received);
-
-    collect_send(&tc, 10);
-
-    parent = collect_parent(&tc);
-    if (!rimeaddr_cmp(parent, &oldparent)) {
-        if (!rimeaddr_cmp(&oldparent, &rimeaddr_null)) {
-            printf("#L %d 0\n", oldparent.u8[0]);
-        }
-        if (!rimeaddr_cmp(parent, &rimeaddr_null)) {
-            printf("#L %d 1\n", parent->u8[0]);
-        }
-        rimeaddr_copy(&oldparent, parent);
-    }
-
-}
-
-static void
-add_or_update_neighbor(rimeaddr_t addr, uint8_t total_packets, uint8_t lost_packets, uint8_t rmes_id)
+add_or_update_neighbor(rimeaddr_t addr, uint8_t total_packets,
+                       uint8_t lost_packets, uint8_t rmes_id,
+                       uint16_t lqi, uint16_t rssi)
 {
     datacom_neighbor_t* n = (datacom_neighbor_t*) malloc(sizeof (datacom_neighbor_t));
     n->total_packets = total_packets;
     n->lost_packets = lost_packets;
     n->last_packet_id = rmes_id;
+    n->lqi = lqi;
+    n->rssi = rssi;
     n->next = NULL;
     n->sender = addr;
 
@@ -287,6 +217,8 @@ add_or_update_neighbor(rimeaddr_t addr, uint8_t total_packets, uint8_t lost_pack
             curr_element->lost_packets = lost_packets;
             curr_element->total_packets = total_packets;
             curr_element->last_packet_id = rmes_id;
+            curr_element->lqi = lqi;
+            curr_element->rssi = rssi;
             return;
         }
         prev_element = curr_element;
@@ -322,5 +254,20 @@ print_n()
         c = c->next;
     }
     printf("\n");
+}
+
+static void
+clean_list()
+{
+    if (neighbor_list == NULL)
+        return;
+    datacom_neighbor_t* curr_element = neighbor_list;
+    datacom_neighbor_t* prev_element = NULL;
+    while (curr_element != NULL) {
+        prev_element = curr_element;
+        free(prev_element);
+        curr_element = curr_element->next;
+    }
+    neighbor_list = NULL;
 }
 
