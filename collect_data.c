@@ -15,8 +15,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define MAX_PACKETS 4
-#define MAX_PACKET_LOST 10
+#define MAX_REQUESTS_SEND 4
 
 static struct collect_conn tc;
 static struct broadcast_conn bc;
@@ -76,20 +75,27 @@ broadcast_receive(struct broadcast_conn* c, const rimeaddr_t* from)
 
     uint16_t lqi = packetbuf_attr(PACKETBUF_ATTR_LINK_QUALITY);
     uint16_t rssi = packetbuf_attr(PACKETBUF_ATTR_RSSI);
+    uint16_t etx = 0;
+
+    struct collect_neighbor* cn = collect_neighbor_list_find(&tc.neighbor_list, from);
+    if (cn != NULL) {
+        etx = cn->rtmetric;
+        printf("etx metric from %d.%d  is %d \n", from->u8[0], from->u8[1], cn->rtmetric);
+    }
 
     datacom_neighbor_t* n = get_neighbor_by_rimeaddr(*from);
     if (n == NULL) {
-        add_or_update_neighbor(*from, 0, 0, rmes_id, lqi, rssi);
+        add_or_update_neighbor(*from, 0, 0, rmes_id, lqi, rssi, etx);
     }
     else if (n->last_packet_id < rmes_id) {
         n->lost_packets += rmes_id - n->last_packet_id - 1;
         printf("%d.%d total packets: %d  lost packets: %d  %d %d\n", n->sender.u8[0], n->sender.u8[1],
                n->total_packets, n->lost_packets, rmes_id, n->last_packet_id);
         n->total_packets = rmes_id;
-        add_or_update_neighbor(n->sender, n->total_packets, n->lost_packets, rmes_id, lqi, rssi);
+        add_or_update_neighbor(n->sender, n->total_packets, n->lost_packets, rmes_id, lqi, rssi, etx);
     }
     else {
-        add_or_update_neighbor(n->sender, 0, 0, rmes_id, lqi, rssi);
+        add_or_update_neighbor(n->sender, 0, 0, rmes_id, lqi, rssi, etx);
     }
 
     print_n();
@@ -139,10 +145,10 @@ PROCESS_THREAD(example_collect_process, ev, data)
         max_total_packet += 1;
 
         printf("m number :%d \n", max_total_packet);
-        if (max_total_packet >= MAX_PACKET_LOST) {
+        if (max_total_packet >= MAX_REQUESTS_SEND) {
             send_packets_to_sink();
             max_total_packet = 0;
-//            clean_list();
+            //clean_list();
         }
 
     }
@@ -191,22 +197,13 @@ send_packets_to_sink()
 static void
 add_or_update_neighbor(rimeaddr_t addr, uint8_t total_packets,
                        uint8_t lost_packets, uint8_t rmes_id,
-                       uint16_t lqi, uint16_t rssi)
+                       uint16_t lqi, uint16_t rssi, uint16_t etx)
 {
-    datacom_neighbor_t* n = (datacom_neighbor_t*) malloc(sizeof (datacom_neighbor_t));
-    n->total_packets = total_packets;
-    n->lost_packets = lost_packets;
-    n->last_packet_id = rmes_id;
-    n->lqi = lqi;
-    n->rssi = rssi;
-    n->next = NULL;
-    n->sender = addr;
-
     datacom_neighbor_t* curr_element = neighbor_list;
     datacom_neighbor_t* prev_element = NULL;
 
     if (curr_element == NULL) {
-        neighbor_list = n;
+        neighbor_list = init_neighbor(addr, total_packets, lost_packets, rmes_id, lqi, rssi, etx);
         neighbor_list->next = NULL;
         neighbor_list_size += 1;
         return;
@@ -225,10 +222,26 @@ add_or_update_neighbor(rimeaddr_t addr, uint8_t total_packets,
         curr_element = curr_element->next;
     }
 
-    prev_element->next = n;
+    prev_element->next = init_neighbor(addr, total_packets, lost_packets, rmes_id, lqi, rssi, etx);
     prev_element->next->next = NULL;
-    n->next = NULL;
     neighbor_list_size += 1;
+}
+
+static datacom_neighbor_t*
+init_neighbor(rimeaddr_t addr, uint8_t total_packets,
+              uint8_t lost_packets, uint8_t rmes_id,
+              uint16_t lqi, uint16_t rssi, uint16_t etx)
+{
+    datacom_neighbor_t* n = (datacom_neighbor_t*) malloc(sizeof (datacom_neighbor_t));
+    n->total_packets = total_packets;
+    n->lost_packets = lost_packets;
+    n->last_packet_id = rmes_id;
+    n->lqi = lqi;
+    n->rssi = rssi;
+    n->etx = etx;
+    n->next = NULL;
+    n->sender = addr;
+    return n;
 }
 
 static datacom_neighbor_t*
