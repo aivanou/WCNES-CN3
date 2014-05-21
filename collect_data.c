@@ -120,7 +120,7 @@ PROCESS_THREAD(example_collect_process, ev, data)
     if (rimeaddr_node_addr.u8[0] == 75 &&
             rimeaddr_node_addr.u8[1] == 0) {
         printf("I am sink ID: %d.%d\n", rimeaddr_node_addr.u8[0], rimeaddr_node_addr.u8[1]);
-        collect_set_sink(&tc, 1;
+        collect_set_sink(&tc, 1);
     }
 
     broadcast_open(&bc, 129, &broactcast_calls);
