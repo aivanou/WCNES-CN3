@@ -1,0 +1,14 @@
+sink id is 1.0
+etx metric from 1.0 is 1
+packet information : from 2.0 to 1.0 total:  3  , lost:  4 , {47  -37} hops: 1
+packet information : from 2.0 to 3.0 total:  3  , lost:  4 , {32  -40} hops: 1
+packet information : from 2.0 to 4.0 total:  3  , lost:  4 , {43  -43} hops: 1
+etx metric from 2.0 is 0.75
+packet information: from 3.0 to 1.0 total: 3, lost: 4 { 10 -60 } hops 1
+packet information: from 3.0 to 2.0 total: 3, lost: 4 { 30 -39 } hops 1
+packet information: from 3.0 to 4.0 total: 3, lost: 4 { 50 -10 } hops 1
+etx metric from 3.0 is 0.66
+packet information: from 4.0 to 1.0 total: 3, lost: 4 { 30 -47 } hops 1
+packet information: from 4.0 to 2.0 total: 3, lost: 4 { 28 -30 } hops 1
+packet information: from 4.0 to 3.0 total: 3, lost: 4 { 48 -15 } hops 1
+etx metric from 4.0 is 0.5
