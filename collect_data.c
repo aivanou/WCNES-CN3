@@ -72,9 +72,9 @@ broadcast_receive(struct broadcast_conn* c, const rimeaddr_t* from)
         rmes_id = ((uint8_t*) packetbuf_dataptr() + strlen(broadcast_tag))[0];
     }
 
-//    printf("%d.%d:  broadcast from %d.%d  to me, message id: %d \n",
-//           rimeaddr_node_addr.u8[0], rimeaddr_node_addr.u8[1],
-//           from->u8[0], from->u8[1], rmes_id);
+    //    printf("%d.%d:  broadcast from %d.%d  to me, message id: %d \n",
+    //           rimeaddr_node_addr.u8[0], rimeaddr_node_addr.u8[1],
+    //           from->u8[0], from->u8[1], rmes_id);
 
     uint16_t lqi = packetbuf_attr(PACKETBUF_ATTR_LINK_QUALITY);
     uint16_t rssi = packetbuf_attr(PACKETBUF_ATTR_RSSI);
@@ -85,7 +85,7 @@ broadcast_receive(struct broadcast_conn* c, const rimeaddr_t* from)
     if (cn != NULL) {
         etx = cn->rtmetric;
         etx_accumulator = cn->le.etx_accumulator;
-        printf("my rtmetric:  %d   etx_accumulator: %d  with link %d.%d\n", etx, etx_accumulator, cn->addr.u8[0],cn->addr.u8[1]);
+        printf("my rtmetric:  %d   etx_accumulator: %d  with link %d.%d\n", etx, etx_accumulator, cn->addr.u8[0], cn->addr.u8[1]);
     }
 
     datacom_neighbor_t* n = get_neighbor_by_rimeaddr(*from);
@@ -163,6 +163,14 @@ PROCESS_THREAD(example_collect_process, ev, data)
             max_total_packet = 0;
             //clean_list();
         }
+
+        //        int nbrs = collect_neighbor_list_num(&tc.neighbor_list);
+        //        int i;
+        //        for (i = 0; i < nbrs; ++i) {
+        //            struct collect_neighbor* cn = collect_neighbor_list_get(&tc.neighbor_list, i);
+        //            printf("n: %d.%d", cn->addr.u8[0], cn->addr.u8[1]);
+        //        }
+        //        printf("\n");
 
     }
 

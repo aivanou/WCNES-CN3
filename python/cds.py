@@ -73,11 +73,11 @@ if there are no black neighbors on hop-1, add neighbors with the highest weight
 """
 
 def cds_bd_c2(g):
-	# TODO: select leader with appropriate algorithm
 	def color_neighbors(ids,color_from,color_to):
 		for i in ids:
 			if g.node[i]['color'] == color_from:
 				g.node[i]['color'] = color_to
+	# TODO: select leader with appropriate algorithm
 	leader=1
 
 	for nId in g.nodes():
@@ -85,19 +85,21 @@ def cds_bd_c2(g):
 	g.node[leader]['metric']=0
 	g=count_hops(g,leader)
 	maxHop=max([g.node[i]['metric'] for i in g.nodes()])
-	get_nodes_by_degree = lambda degree: [x for x in g.nodes() if g.node[x]['metric'] == degree]
+	get_nodes_by_state = lambda nodes,state,value: [x for x in nodes if g.node[x][state] == value]
+	get_nodes_by_degree = lambda nodes,degree: get_nodes_by_state(nodes ,'metric', degree)
+	get_nodes_by_color = lambda nodes,color: get_nodes_by_state(nodes ,'color', color)
 	# iterating over the graph verteces, starting with the
 	# node that is 0 hops away from the leader
 	for i in xrange(0,maxHop+1):
 		# select nodes with depth i
-		nodes_id=get_nodes_by_degree(i)
+		nodes_id=get_nodes_by_degree(g.nodes(),i)
 		# if we have only 1 node, we do not need to go to the while loop
 		if len(nodes_id)==1 and g.node[nodes_id[0]]['color']==0:
 			g.node[nodes_id[0]]['color'] = 2
 			color_neighbors(list(g.neighbors(nodes_id[0])),0,1)
 			continue
 		#while we have white nodes with the hop == i
-		while (len(list([x for x in nodes_id if g.node[x]['color'] == 0]))) > 0:
+		while (len(get_nodes_by_color(nodes_id,0))) > 0:
 			# find node with the maximum weight
 			max_node_id=max_weight_node(g,nodes_id,[0])
 			#color it to black and its neighbors to the gray
@@ -107,14 +109,14 @@ def cds_bd_c2(g):
 	#connecting vertices
 	#if on the hop == i we have node that has no black neighbors on the hop == i-1 
 	#we select the neigbhor of the hop == i-1 with the highest weight
-	nbrs_by_color_and_hop = lambda node_ids,hop,allowed_colors: [x for x in node_ids \
+	get_nodes_by_color_and_hop = lambda node_ids,hop,allowed_colors: [x for x in node_ids \
 							 if g.node[x]['color'] in allowed_colors and g.node[x]['metric']==hop] 
 	for i in xrange(1,maxHop+1):
-		nodes_id = nbrs_by_color_and_hop(g.nodes(),i,[2])
+		nodes_id = get_nodes_by_color_and_hop(g.nodes(),i,[2])
 		for nId in nodes_id:
-			black_nbrs = nbrs_by_color_and_hop(g.neighbors(i),i-1,[2])
+			black_nbrs = get_nodes_by_color_and_hop(g.neighbors(i),i-1,[2])
 			if len(black_nbrs) == 0:
-				max_node_id = max_weight_node(g,[x for x in nbrs_by_color_and_hop(g.neighbors(nId),i-1,[0,1])],[0,1])
+				max_node_id = max_weight_node(g,[x for x in get_nodes_by_color_and_hop(g.neighbors(nId),i-1,[0,1])],[0,1])
 				if max_node_id == 0:
 					print 'warning, graph is probably Directional'
 					continue
