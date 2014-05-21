@@ -119,8 +119,8 @@ PROCESS_THREAD(example_collect_process, ev, data)
     collect_open(&tc, 130, COLLECT_ROUTER, &callbacks);
     if (rimeaddr_node_addr.u8[0] == 1 &&
             rimeaddr_node_addr.u8[1] == 0) {
-        printf("I am sink\n");
-        collect_set_sink(&tc, 1);
+        printf("I am sink\n ID: 75.0");
+        collect_set_sink(&tc, 75);
     }
 
     broadcast_open(&bc, 129, &broactcast_calls);
