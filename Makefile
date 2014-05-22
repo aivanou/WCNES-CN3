@@ -1,3 +1,3 @@
-CONTIKI = /home/tierex/opt/contiki/contiki-2.7
+CONTIKI = /home/user/contiki
 
 include $(CONTIKI)/Makefile.include
