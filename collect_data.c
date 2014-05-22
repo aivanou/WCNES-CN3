@@ -43,7 +43,7 @@ recv(const rimeaddr_t *originator, uint8_t seqno, uint8_t hops)
         current_offset += sizeof (uint8_t);
 
         datacom_packet_lost_inf_t* p = (datacom_packet_lost_inf_t*) malloc(sizeof (datacom_packet_lost_inf_t) * npackets);
-        printf("Sink received %d lost packet information \n", npackets);
+        printf("Sink received %d packets\n", npackets);
         for (i = 0; i < npackets; ++i) {
             memcpy(&p[i], addr + current_offset, sizeof (datacom_packet_lost_inf_t));
             current_offset += sizeof (datacom_packet_lost_inf_t);
