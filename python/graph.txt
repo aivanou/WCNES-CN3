@@ -12,3 +12,12 @@ packet information: from 4.0 to 1.0 total: 3, lost: 4 { 30 -47 } hops 1
 packet information: from 4.0 to 2.0 total: 3, lost: 4 { 28 -30 } hops 1
 packet information: from 4.0 to 3.0 total: 3, lost: 4 { 48 -15 } hops 1
 etx metric from 4.0 is 0.5
+packet information: from 5.0 to 1.0 total: 3, lost: 4 { 32 -30 } hops 1
+packet information: from 5.0 to 4.0 total: 3, lost: 4 { 29 -28 } hops 1
+etx metric from 5.0 is 0.57
+packet information: from 6.0 to 5.0 total: 3, lost: 4 { 32 -30 } hops 1
+etx metric from 6.0 is 0.57
+packet information: from 7.0 to 6.0 total: 3, lost: 4 { 32 -30 } hops 1
+etx metric from 7.0 is 0.57
+packet information: from 8.0 to 3.0 total: 3, lost: 4 { 32 -30 } hops 1
+etx metric from 8.0 is 0.57

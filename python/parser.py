@@ -84,9 +84,9 @@ def drawGraph(G, title, n):
 	plt.subplot(220 + n)
 	plt.title(title)
 	plt.axis('off')
-	nx.draw_networkx_labels(G, pos, font_size = 12, font_family = 'sans-serif')
+	nx.draw_networkx_labels(G, pos, font_size = 10, font_family = 'sans-serif')
 	# nodes
-	nx.draw_networkx_nodes(G, pos, cmap = plt.get_cmap('jet'), node_size=750)
+	nx.draw_networkx_nodes(G, pos, cmap = plt.get_cmap('jet'), node_size=350)
 	# edges
 	nx.draw_networkx_edges(G, pos, edge_color = 'black', arrows = True)
 	# edge labels
@@ -179,5 +179,14 @@ if __name__ == "__main__":
 	drawGraph(lqiGraph, 'LQI Graph', 3)
 	lqiMst = prim(lqiGraph, sink)
 	drawGraph(lqiMst, 'LQI MST', 4)
+
+	#Calculate the betweeness centrality of the nodes.
+	BC_rssi = nx.betweenness_centrality(rssiGraph,None,False,'normRssi')        
+	BC_lqi = nx.betweenness_centrality(lqiGraph,None,False,'normLqi')
+
+        #print "Betweeness centrality nodes ranking, of RSSI graph"
+	print(BC_rssi)
+	#print('\nBetweeness centrality nodes ranking, of LQI graph\n')
+	print(BC_lqi)
 	plt.show()
 	
