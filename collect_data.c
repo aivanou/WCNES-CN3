@@ -17,6 +17,9 @@
 
 #define MAX_REQUESTS_SEND 4
 
+// PA_LEVEL, 7 = -15dBm
+#define DEFAULT_TX_POWER 7
+
 static struct collect_conn tc;
 static struct broadcast_conn bc;
 
@@ -115,6 +118,14 @@ PROCESS_THREAD(example_collect_process, ev, data)
     PROCESS_EXITHANDLER(broadcast_close(&bc);)
 
     PROCESS_BEGIN();
+
+    // Set TX power
+    cc2420_set_txpower(DEFAULT_TX_POWER);
+
+    printf("%d.%d: packetbuf txpower=%d\n", 
+        rimeaddr_node_addr.u8[0], rimeaddr_node_addr.u8[1],
+        packetbuf_attr(PACKETBUF_ATTR_RADIO_TXPOWER));
+    
 
     collect_open(&tc, 130, COLLECT_ROUTER, &callbacks);
     if (rimeaddr_node_addr.u8[0] == 75 &&
