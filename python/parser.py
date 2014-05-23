@@ -50,6 +50,7 @@ def primEtx(etxValues, sink):
 		mst.add_edge(u, v, weight = r)
 	return mst
 
+
 def prim(G, sink):
 	nodes = [n for n in G.nodes() if n != sink]
 	edges = []
@@ -96,16 +97,21 @@ def drawGraph(G, title, n):
 
 def normalizeData(d, negative = False):
 	maxVal = None
+	minVal = None
 	for index in d:
 		val = d[index]
-		if maxVal == None or (negative and maxVal > val) or (not negative and maxVal < val):
+		#Find minimum and maximum rssi and lqi values
+		if maxVal == None or (negative and maxVal < val) or (not negative and maxVal < val):
 			maxVal = val
+		if minVal == None or (negative and minVal > val) or (not negative and minVal > val):
+			minVal = val
 
 	normalizedData = dict([(n, d[n]) for n in d])
 
 	for index in d:
 		val = d[index]
-		normalizedData[index] = val / maxVal
+		#Changed normalization to work correctly with negative values
+		normalizedData[index] = (val - minVal) / (maxVal - minVal)
 	return normalizedData
 
 
@@ -113,6 +119,7 @@ def parseFile(fileName):
 	f = open(fileName, 'r')
 	rssi = {}
 	lqi = {}
+	node_id={};
 	etx = {}
 	sink = 1
 	u = 0
@@ -142,22 +149,28 @@ if __name__ == "__main__":
 	lqiGraph = nx.DiGraph()  # The graph holding data about LQI
 	lqiBestEdges = []        # The optimal LQI edge for each node
 	(sink, rssi, lqi, etx) = parseFile("graph.txt")
-	
+
+	print('\n')
+	print(rssi)
+	print('\n')
+	print(lqi)
+
 	normLqi = normalizeData(lqi)
 	normRssi = normalizeData(rssi, True)
+
 
 	for (u, v) in normLqi:
 		if u not in lqiGraph.nodes():
 			lqiGraph.add_node(u)
 		if v not in lqiGraph.nodes():
-			lqiGraph.add_node(u)
+			lqiGraph.add_node(v)
 		lqiGraph.add_edge(u, v, weight = normLqi[(u, v)])
 
 	for (u, v) in normRssi:
 		if u not in rssiGraph.nodes():
 			rssiGraph.add_node(u)
 		if v not in rssiGraph.nodes():
-			rssiGraph.add_node(u)
+			rssiGraph.add_node(v)
 		rssiGraph.add_edge(u, v, weight = normRssi[(u, v)])
 
 	drawGraph(rssiGraph, 'RSSI Graph', 1)
