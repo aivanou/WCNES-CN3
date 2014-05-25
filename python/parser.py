@@ -107,11 +107,22 @@ def normalizeData(d, negative = False):
 			minVal = val
 
 	normalizedData = dict([(n, d[n]) for n in d])
+	if negative:
+		diff = abs(maxVal) + abs(minVal)
+		for index in d:
+			val = d[index]
+			normalizedData[index] = (diff + val) / abs(minVal)
+	else:
+		for index in d:
+			normalizedData[index] = val / maxVal
 
-	for index in d:
-		val = d[index]
-		#Changed normalization to work correctly with negative values
-		normalizedData[index] = (val - minVal) / (maxVal - minVal)
+
+	#for index in d:
+	#	val = d[index]
+	#	#Changed normalization to work correctly with negative values
+	#	normalizedData[index] = (val - minVal) / (maxVal - minVal)
+	print normalizedData
+	print negative
 	return normalizedData
 
 
@@ -132,7 +143,6 @@ def parseFile(fileName):
 			u = data[0]
 			etx[u] = float(data[1])
 		elif len(data) == 7: # Else RSSI and LQI
-			print data
 			u = data[0]
 			v = data[1]
 			# data[2] is total amount of packets
@@ -140,7 +150,6 @@ def parseFile(fileName):
 			lqi[(u, v)] = float(data[4])
 			rssi[(u, v)] = float(data[5])
 	
-	print etx
 	return (sink, rssi, lqi, etx)
 
 if __name__ == "__main__":
@@ -150,14 +159,13 @@ if __name__ == "__main__":
 	lqiBestEdges = []        # The optimal LQI edge for each node
 	(sink, rssi, lqi, etx) = parseFile("graph.txt")
 
-	print('\n')
-	print(rssi)
-	print('\n')
-	print(lqi)
+	#print('\n')
+	#print(rssi)
+	#print('\n')
+	#print(lqi)
 
 	normLqi = normalizeData(lqi)
 	normRssi = normalizeData(rssi, True)
-
 
 	for (u, v) in normLqi:
 		if u not in lqiGraph.nodes():
@@ -184,9 +192,9 @@ if __name__ == "__main__":
 	BC_rssi = nx.betweenness_centrality(rssiGraph,None,False,'normRssi')        
 	BC_lqi = nx.betweenness_centrality(lqiGraph,None,False,'normLqi')
 
-        #print "Betweeness centrality nodes ranking, of RSSI graph"
+	#print "Betweeness centrality nodes ranking, of RSSI graph"
 	print(BC_rssi)
 	#print('\nBetweeness centrality nodes ranking, of LQI graph\n')
-	print(BC_lqi)
+	#print(BC_lqi)
 	plt.show()
 	
