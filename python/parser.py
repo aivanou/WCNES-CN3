@@ -3,82 +3,46 @@ import re
 import networkx as nx
 import matplotlib.pyplot as plt
 
-def removeEdgesFromNode(G, edges, node):
-	for (u, v, d) in edges:
-		if u == node:
-			edges.remove((u, v, d))
-
-def extractMax(G, reliability, nodes):
+def extractMax(V, distances):
 	maxVal = 0
-	child = None
-	parent = None
-	for u, v, data in G.edges(data=True):
-		if u in nodes and not v in nodes:
-			if v == '1.0':
-				print v
-
-			r = data['weight']
-			if reliability[v] * r > reliability[u] and reliability[v] * r > maxVal:
-				maxVal = reliability[v] * r
-				child = u
-				parent = v
-	return (child, parent, maxVal)
-
-def extractMaxEtx(etxValues):
-	maxVal = 0
-	child = None
-	parent = None
-
-def primEtx(etxValues, sink):
-	nodes = [n for n in etxValues if n != sink]
-	edges = {}
-	# Reliability indicates the reliability from a node to the sink
-	# A reliability of 1.0 indicates a 100 % good link while 0 is 
-	# an awful link.
-	reliability = dict([(n, 0) for n in etxValues])
-	etxValues[sink] = 1
-	mst = nx.Graph()
-
-	while len(etxValues) > 0:
-		(u, v, r) = extractMaxEtx(etxValues)
-		if u != None:
-			if u in nodes:
-				nodes.remove(u)
-			reliability[u] = r
-			edges[u] = (u, v, r / reliability[v])
-		else:
-			break
-	for node in nodes:
-		mst.add_node(node)
-	for u, v, r in edges:
-		mst.add_edge(u, v, weight = r)
-	return mst
-
+	node = None
+	for u in V:
+		if distances[u] > maxVal:
+			maxVal = distances[u]
+			node = u
+	return node
 
 def prim(G, sink):
-	nodes = [n for n in G.nodes() if n != sink]
-	edges = []
+	# The unvisited vertices
+	V = [n for n in G.nodes()]
+	distances = dict([(n, 0.0) for n in G.nodes()]) # V
+	parents = dict([(n, None) for n in G.nodes()])
+	distances[sink] = 1.0
 	# Reliability indicates the reliability from a node to the sink
 	# A reliability of 1.0 indicates a 100 % good link while 0 is 
 	# an awful link.
-	reliability = dict([(n, 0) for n in G.nodes()])
-	reliability[sink] = 1
-	mst = nx.Graph()
-
-	while len(nodes) > 0:
-		(u, v, r) = extractMax(G, reliability, nodes)
+	while len(V) > 0:
+		u = extractMax(V, distances)
 		if u != None:
-			if u in nodes:
-				nodes.remove(u)
-			reliability[u] = r
-			edges.append((u, v, r / reliability[v]))
+			V.remove(u)
+			for v, parent, data in G.edges(data=True):
+				if parent == u:
+					d = data['weight'] * distances[u]
+					if v in V and d > distances[v]:
+						distances[v] = d
+						parents[v] = u
 		else:
 			break
-	for node in G.nodes():
-		mst.add_node(node)
-	for u, v, r in edges:
-		mst.add_edge(u, v, weight = r)
-	return mst
+	if parents.values().count(None) > 1:
+		return None
+	else:
+		mst = nx.Graph()
+		for node in G.nodes():
+			mst.add_node(node)
+		for v, u, data in G.edges(data=True):
+			if parents[v] == u:
+				mst.add_edge(v, u, weight = data['weight'])
+		return mst
 
 # The networkx "arrows" for the edges are just thicker were they end and are not really arrows.
 # The weight of the edges are outputted close to the node they go from, the originating node.
@@ -187,36 +151,44 @@ if __name__ == "__main__":
 	drawGraph(lqiGraph, 'LQI Graph', 3)
 
 
-	bestRssiMST = None
+	bestRssiMst = None
 	bestRssiVal = 0
 	bestRssiSink = None
 	for sink in rssiGraph.nodes():
 		rssiMst = prim(rssiGraph, sink)
-		rssiVal = 0
-		for u, v, data in rssiMst.edges(data=True):
-			rssiVal += data['weight']
-		if rssiVal > bestRssiVal:
-			bestRssiMst = rssiMst
-			bestRssiVal = rssiVal
-			bestRssiSink = sink
+		if rssiMst == None:
+			continue
+		else:
+			rssiVal = 0
+			for u, v, data in rssiMst.edges(data=True):
+				rssiVal += data['weight']
+			if rssiVal > bestRssiVal:
+				bestRssiMst = rssiMst
+				bestRssiVal = rssiVal
+				bestRssiSink = sink
 
-	bestLqiMST = None
+	bestLqiMst = None
 	bestLqiVal = 0
 	bestLqiSink = None
 	for sink in lqiGraph.nodes():
 		lqiMst = prim(lqiGraph, sink)
-		lqiVal = 0
-		for u, v, data in lqiMst.edges(data=True):
-			lqiVal += data['weight']
-		if lqiVal > bestLqiVal:
-			bestLqiMst = lqiMst
-			bestLqiVal = lqiVal
-			bestLqiSink = sink
+		if lqiMst == None:
+			continue
+		else:
+			lqiVal = 0
+			for u, v, data in lqiMst.edges(data=True):
+				lqiVal += data['weight']
+			if lqiVal > bestLqiVal:
+				bestLqiMst = lqiMst
+				bestLqiVal = lqiVal
+				bestLqiSink = sink
 
 	print "Best RSSI sink: " + bestRssiSink
 	print "Best LQI sink: " + bestLqiSink
-	drawGraph(rssiMst, 'RSSI MST', 2)
-	drawGraph(lqiMst, 'LQI MST', 4)
+	if bestRssiMst != None:
+		drawGraph(bestRssiMst, 'RSSI MST', 2)
+	if bestLqiMst != None:
+		drawGraph(bestLqiMst, 'LQI MST', 4)
 
 	#Calculate the betweeness centrality of the nodes.
 	BC_rssi = nx.betweenness_centrality(rssiGraph,None,False,'normRssi')        
