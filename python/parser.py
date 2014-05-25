@@ -8,16 +8,20 @@ def removeEdgesFromNode(G, edges, node):
 		if u == node:
 			edges.remove((u, v, d))
 
-def extractMax(G, reliability):
+def extractMax(G, reliability, nodes):
 	maxVal = 0
 	child = None
 	parent = None
 	for u, v, data in G.edges(data=True):
-		r = data['weight']
-		if reliability[v] * r > reliability[u] and reliability[v] * r > maxVal:
-			maxVal = reliability[v] * r
-			child = u
-			parent = v
+		if u in nodes and not v in nodes:
+			if v == '1.0':
+				print v
+
+			r = data['weight']
+			if reliability[v] * r > reliability[u] and reliability[v] * r > maxVal:
+				maxVal = reliability[v] * r
+				child = u
+				parent = v
 	return (child, parent, maxVal)
 
 def extractMaxEtx(etxValues):
@@ -27,7 +31,7 @@ def extractMaxEtx(etxValues):
 
 def primEtx(etxValues, sink):
 	nodes = [n for n in etxValues if n != sink]
-	edges = []
+	edges = {}
 	# Reliability indicates the reliability from a node to the sink
 	# A reliability of 1.0 indicates a 100 % good link while 0 is 
 	# an awful link.
@@ -41,7 +45,7 @@ def primEtx(etxValues, sink):
 			if u in nodes:
 				nodes.remove(u)
 			reliability[u] = r
-			edges.append((u, v, r / reliability[v]))
+			edges[u] = (u, v, r / reliability[v])
 		else:
 			break
 	for node in nodes:
@@ -62,7 +66,7 @@ def prim(G, sink):
 	mst = nx.Graph()
 
 	while len(nodes) > 0:
-		(u, v, r) = extractMax(G, reliability)
+		(u, v, r) = extractMax(G, reliability, nodes)
 		if u != None:
 			if u in nodes:
 				nodes.remove(u)
@@ -121,8 +125,6 @@ def normalizeData(d, negative = False):
 	#	val = d[index]
 	#	#Changed normalization to work correctly with negative values
 	#	normalizedData[index] = (val - minVal) / (maxVal - minVal)
-	print normalizedData
-	print negative
 	return normalizedData
 
 
@@ -182,10 +184,38 @@ if __name__ == "__main__":
 		rssiGraph.add_edge(u, v, weight = normRssi[(u, v)])
 
 	drawGraph(rssiGraph, 'RSSI Graph', 1)
-	rssiMst = prim(rssiGraph, sink)
-	drawGraph(rssiMst, 'RSSI MST', 2)
 	drawGraph(lqiGraph, 'LQI Graph', 3)
-	lqiMst = prim(lqiGraph, sink)
+
+
+	bestRssiMST = None
+	bestRssiVal = 0
+	bestRssiSink = None
+	for sink in rssiGraph.nodes():
+		rssiMst = prim(rssiGraph, sink)
+		rssiVal = 0
+		for u, v, data in rssiMst.edges(data=True):
+			rssiVal += data['weight']
+		if rssiVal > bestRssiVal:
+			bestRssiMst = rssiMst
+			bestRssiVal = rssiVal
+			bestRssiSink = sink
+
+	bestLqiMST = None
+	bestLqiVal = 0
+	bestLqiSink = None
+	for sink in lqiGraph.nodes():
+		lqiMst = prim(lqiGraph, sink)
+		lqiVal = 0
+		for u, v, data in lqiMst.edges(data=True):
+			lqiVal += data['weight']
+		if lqiVal > bestLqiVal:
+			bestLqiMst = lqiMst
+			bestLqiVal = lqiVal
+			bestLqiSink = sink
+
+	print "Best RSSI sink: " + bestRssiSink
+	print "Best LQI sink: " + bestLqiSink
+	drawGraph(rssiMst, 'RSSI MST', 2)
 	drawGraph(lqiMst, 'LQI MST', 4)
 
 	#Calculate the betweeness centrality of the nodes.
