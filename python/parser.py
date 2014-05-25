@@ -3,6 +3,9 @@ import re
 import networkx as nx
 import matplotlib.pyplot as plt
 
+
+# Returns the maximum distance over an array of vertices, V
+# given the distances from the sink of a graph
 def extractMax(V, distances):
 	maxVal = 0
 	node = None
@@ -10,35 +13,47 @@ def extractMax(V, distances):
 		if distances[u] > maxVal:
 			maxVal = distances[u]
 			node = u
+	if node != None:
+		# Remove the vertex
+		V.remove(node)
 	return node
 
+
+# Returns the minimum spanning tree of the tree G with the given sink
+# If the number of edges in the resulting MST is less than the number 
+# of nodes None will be returned.
 def prim(G, sink):
 	# The unvisited vertices
 	V = [n for n in G.nodes()]
 	distances = dict([(n, 0.0) for n in G.nodes()]) # V
 	parents = dict([(n, None) for n in G.nodes()])
-	distances[sink] = 1.0
-	# Reliability indicates the reliability from a node to the sink
-	# A reliability of 1.0 indicates a 100 % good link while 0 is 
-	# an awful link.
+	distances[sink] = 1.0 # The distance as reliability
 	while len(V) > 0:
+		# Get the node with the lowest value from the unvisited vertices
 		u = extractMax(V, distances)
 		if u != None:
-			V.remove(u)
+			# Get all edges to the edge u.
 			for v, parent, data in G.edges(data=True):
 				if parent == u:
 					d = data['weight'] * distances[u]
+					# If the distance is better than before, update it and the 
+					# parent of the node
 					if v in V and d > distances[v]:
 						distances[v] = d
 						parents[v] = u
 		else:
+			# an error occured
 			break
+	# All nodes, but the sink, must have a parent node.
 	if parents.values().count(None) > 1:
 		return None
 	else:
+		# Greate the actial graph
 		mst = nx.Graph()
+		# Add the vertices
 		for node in G.nodes():
 			mst.add_node(node)
+		# Add the edges
 		for v, u, data in G.edges(data=True):
 			if parents[v] == u:
 				mst.add_edge(v, u, weight = data['weight'])
@@ -63,32 +78,29 @@ def drawGraph(G, title, n):
 	nx.draw_networkx_edge_labels(G, pos, edge_labels=edge_labels, label_pos=0.75, font_color='black')
 	
 
-def normalizeData(d, negative = False):
-	maxVal = None
-	minVal = None
-	for index in d:
-		val = d[index]
-		#Find minimum and maximum rssi and lqi values
-		if maxVal == None or (negative and maxVal < val) or (not negative and maxVal < val):
-			maxVal = val
-		if minVal == None or (negative and minVal > val) or (not negative and minVal > val):
-			minVal = val
-
+def normalizeData(d):
+	# Create a new dict for holding the normalized data
 	normalizedData = dict([(n, d[n]) for n in d])
-	if negative:
+	# Get the maximum and minimum values
+	maxVal = max(d.values())
+	minVal = min(d.values())
+	
+	# If negative values are inputted then 
+	if minVal < 0:
+		# Example: -3 is max and -50:
+		# diff = 53
+		# - 3 -> (53 + (- 3)) / 50 = 50 / 50 = 1.0
+		# -50 -> (53 + (-50)) / 50 = 50 /  3 = 0.06
 		diff = abs(maxVal) + abs(minVal)
 		for index in d:
 			val = d[index]
 			normalizedData[index] = (diff + val) / abs(minVal)
 	else:
+		# Standard normalization
 		for index in d:
+			val = d[index]
 			normalizedData[index] = val / maxVal
-
-
-	#for index in d:
-	#	val = d[index]
-	#	#Changed normalization to work correctly with negative values
-	#	normalizedData[index] = (val - minVal) / (maxVal - minVal)
+	# Return the normalized array
 	return normalizedData
 
 
@@ -119,72 +131,67 @@ def parseFile(fileName):
 	return (sink, rssi, lqi, etx)
 
 if __name__ == "__main__":
-	rssiGraph = nx.DiGraph() # The graph holding data about RSSI
-	rssiBestEdges = []       # The optimal RSSI edge for each node
-	lqiGraph = nx.DiGraph()  # The graph holding data about LQI
-	lqiBestEdges = []        # The optimal LQI edge for each node
 	(sink, rssi, lqi, etx) = parseFile("graph.txt")
 
-	#print('\n')
-	#print(rssi)
-	#print('\n')
-	#print(lqi)
-
+	# Normalize the lqi and rssi values.
 	normLqi = normalizeData(lqi)
-	normRssi = normalizeData(rssi, True)
+	normRssi = normalizeData(rssi)
 
-	for (u, v) in normLqi:
-		if u not in lqiGraph.nodes():
-			lqiGraph.add_node(u)
-		if v not in lqiGraph.nodes():
-			lqiGraph.add_node(v)
-		lqiGraph.add_edge(u, v, weight = normLqi[(u, v)])
-
-	for (u, v) in normRssi:
+	# Create the RSSI graph
+	rssiGraph = nx.DiGraph() # The graph holding data about RSSI
+	for u, v in normRssi:
 		if u not in rssiGraph.nodes():
 			rssiGraph.add_node(u)
 		if v not in rssiGraph.nodes():
 			rssiGraph.add_node(v)
 		rssiGraph.add_edge(u, v, weight = normRssi[(u, v)])
 
-	drawGraph(rssiGraph, 'RSSI Graph', 1)
-	drawGraph(lqiGraph, 'LQI Graph', 3)
-
+	# Create the LQI Graph
+	lqiGraph = nx.DiGraph()  # The graph holding data about LQI
+	for u, v in normLqi:
+		if u not in lqiGraph.nodes():
+			lqiGraph.add_node(u)
+		if v not in lqiGraph.nodes():
+			lqiGraph.add_node(v)
+		lqiGraph.add_edge(u, v, weight = normLqi[(u, v)])
 
 	bestRssiMst = None
 	bestRssiVal = 0
 	bestRssiSink = None
 	for sink in rssiGraph.nodes():
-		rssiMst = prim(rssiGraph, sink)
-		if rssiMst == None:
-			continue
-		else:
-			rssiVal = 0
-			for u, v, data in rssiMst.edges(data=True):
-				rssiVal += data['weight']
-			if rssiVal > bestRssiVal:
-				bestRssiMst = rssiMst
-				bestRssiVal = rssiVal
+		mst = prim(rssiGraph, sink)
+		if mst != None:
+			val = 0
+			for u, v, data in mst.edges(data=True):
+				val += data['weight']
+			if val > bestRssiVal:
+				bestRssiMst = mst
+				bestRssiVal = val
 				bestRssiSink = sink
 
 	bestLqiMst = None
 	bestLqiVal = 0
 	bestLqiSink = None
 	for sink in lqiGraph.nodes():
-		lqiMst = prim(lqiGraph, sink)
-		if lqiMst == None:
+		mst = prim(lqiGraph, sink)
+		if mst == None:
 			continue
 		else:
-			lqiVal = 0
-			for u, v, data in lqiMst.edges(data=True):
-				lqiVal += data['weight']
-			if lqiVal > bestLqiVal:
-				bestLqiMst = lqiMst
-				bestLqiVal = lqiVal
+			val = 0
+			for u, v, data in mst.edges(data=True):
+				val += data['weight']
+			if val > bestLqiVal:
+				bestLqiMst = mst
+				bestLqiVal = val
 				bestLqiSink = sink
 
 	print "Best RSSI sink: " + bestRssiSink
 	print "Best LQI sink: " + bestLqiSink
+
+	# Draw the graphs and the MSTs
+	drawGraph(rssiGraph, 'RSSI Graph', 1)
+	drawGraph(lqiGraph, 'LQI Graph', 3)
+
 	if bestRssiMst != None:
 		drawGraph(bestRssiMst, 'RSSI MST', 2)
 	if bestLqiMst != None:
