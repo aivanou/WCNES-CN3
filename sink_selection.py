@@ -165,6 +165,27 @@ def count_hops(g,nodeId):
 """
 implementation of centralized cds_bd_c2 algorithm, 
 described in the paper: http://www.cs.gsu.edu/yli/papers/TPDS09.pdf
+
+Little discription:
+
+neigbhor coloring:
+0 - white
+1 - gray
+2 - black
+
+We are iterating over the graph verteces, starting with the hop == 0 
+on each iteration we select verteces that are away from the leader on the distance == hop
+
+1. Iterating over these verteces:
+Select the vertex that has white color and max weight
+Color it to black and its neighbors to gray
+continue if there are more white verteces on the distance == hop
+
+2. Connecting CDS.
+Iterate over the hop distance starting with 1
+On each iteration select the neighbors with the distance == hop - 1
+if there are no black neighbors on hop-1, add neighbors with the highest weight
+
 """
 
 def cds_bd_c2(g):
