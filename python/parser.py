@@ -3,77 +3,61 @@ import re
 import networkx as nx
 import matplotlib.pyplot as plt
 
-def removeEdgesFromNode(G, edges, node):
-	for (u, v, d) in edges:
-		if u == node:
-			edges.remove((u, v, d))
 
-def extractMax(G, reliability):
+# Returns the maximum distance over an array of vertices, V
+# given the distances from the sink of a graph
+def extractMax(V, distances):
 	maxVal = 0
-	child = None
-	parent = None
-	for u, v, data in G.edges(data=True):
-		r = data['weight']
-		if reliability[v] * r > reliability[u] and reliability[v] * r > maxVal:
-			maxVal = reliability[v] * r
-			child = u
-			parent = v
-	return (child, parent, maxVal)
+	node = None
+	for u in V:
+		if distances[u] > maxVal:
+			maxVal = distances[u]
+			node = u
+	if node != None:
+		# Remove the vertex
+		V.remove(node)
+	return node
 
-def extractMaxEtx(etxValues):
-	maxVal = 0
-	child = None
-	parent = None
 
-def primEtx(etxValues, sink):
-	nodes = [n for n in etxValues if n != sink]
-	edges = []
-	# Reliability indicates the reliability from a node to the sink
-	# A reliability of 1.0 indicates a 100 % good link while 0 is 
-	# an awful link.
-	reliability = dict([(n, 0) for n in etxValues])
-	etxValues[sink] = 1
-	mst = nx.Graph()
-
-	while len(etxValues) > 0:
-		(u, v, r) = extractMaxEtx(etxValues)
-		if u != None:
-			if u in nodes:
-				nodes.remove(u)
-			reliability[u] = r
-			edges.append((u, v, r / reliability[v]))
-		else:
-			break
-	for node in nodes:
-		mst.add_node(node)
-	for u, v, r in edges:
-		mst.add_edge(u, v, weight = r)
-	return mst
-
+# Returns the minimum spanning tree of the tree G with the given sink
+# If the number of edges in the resulting MST is less than the number 
+# of nodes None will be returned.
 def prim(G, sink):
-	nodes = [n for n in G.nodes() if n != sink]
-	edges = []
-	# Reliability indicates the reliability from a node to the sink
-	# A reliability of 1.0 indicates a 100 % good link while 0 is 
-	# an awful link.
-	reliability = dict([(n, 0) for n in G.nodes()])
-	reliability[sink] = 1
-	mst = nx.Graph()
-
-	while len(nodes) > 0:
-		(u, v, r) = extractMax(G, reliability)
+	# The unvisited vertices
+	V = [n for n in G.nodes()]
+	distances = dict([(n, 0.0) for n in G.nodes()]) # V
+	parents = dict([(n, None) for n in G.nodes()])
+	distances[sink] = 1.0 # The distance as reliability
+	while len(V) > 0:
+		# Get the node with the lowest value from the unvisited vertices
+		u = extractMax(V, distances)
 		if u != None:
-			if u in nodes:
-				nodes.remove(u)
-			reliability[u] = r
-			edges.append((u, v, r / reliability[v]))
+			# Get all edges to the edge u.
+			for v, parent, data in G.edges(data=True):
+				if parent == u:
+					d = data['weight'] * distances[u]
+					# If the distance is better than before, update it and the 
+					# parent of the node
+					if v in V and d > distances[v]:
+						distances[v] = d
+						parents[v] = u
 		else:
+			# an error occured
 			break
-	for node in G.nodes():
-		mst.add_node(node)
-	for u, v, r in edges:
-		mst.add_edge(u, v, weight = r)
-	return mst
+	# All nodes, but the sink, must have a parent node.
+	if parents.values().count(None) > 1:
+		return None
+	else:
+		# Greate the actial graph
+		mst = nx.Graph()
+		# Add the vertices
+		for node in G.nodes():
+			mst.add_node(node)
+		# Add the edges
+		for v, u, data in G.edges(data=True):
+			if parents[v] == u:
+				mst.add_edge(v, u, weight = data['weight'])
+		return mst
 
 # The networkx "arrows" for the edges are just thicker were they end and are not really arrows.
 # The weight of the edges are outputted close to the node they go from, the originating node.
@@ -83,9 +67,9 @@ def drawGraph(G, title, n):
 	plt.subplot(220 + n)
 	plt.title(title)
 	plt.axis('off')
-	nx.draw_networkx_labels(G, pos, font_size = 12, font_family = 'sans-serif')
+	nx.draw_networkx_labels(G, pos, font_size = 10, font_family = 'sans-serif')
 	# nodes
-	nx.draw_networkx_nodes(G, pos, cmap = plt.get_cmap('jet'), node_size=750)
+	nx.draw_networkx_nodes(G, pos, cmap = plt.get_cmap('jet'), node_size=350)
 	# edges
 	nx.draw_networkx_edges(G, pos, edge_color = 'black', arrows = True)
 	# edge labels
@@ -94,18 +78,29 @@ def drawGraph(G, title, n):
 	nx.draw_networkx_edge_labels(G, pos, edge_labels=edge_labels, label_pos=0.75, font_color='black')
 	
 
-def normalizeData(d, negative = False):
-	maxVal = None
-	for index in d:
-		val = d[index]
-		if maxVal == None or (negative and maxVal > val) or (not negative and maxVal < val):
-			maxVal = val
-
+def normalizeData(d):
+	# Create a new dict for holding the normalized data
 	normalizedData = dict([(n, d[n]) for n in d])
-
-	for index in d:
-		val = d[index]
-		normalizedData[index] = val / maxVal
+	# Get the maximum and minimum values
+	maxVal = max(d.values())
+	minVal = min(d.values())
+	
+	# If negative values are inputted then 
+	if minVal < 0:
+		# Example: -3 is max and -50:
+		# diff = 53
+		# - 3 -> (53 + (- 3)) / 50 = 50 / 50 = 1.0
+		# -50 -> (53 + (-50)) / 50 = 50 /  3 = 0.06
+		diff = abs(maxVal) + abs(minVal)
+		for index in d:
+			val = d[index]
+			normalizedData[index] = (diff + val) / abs(minVal)
+	else:
+		# Standard normalization
+		for index in d:
+			val = d[index]
+			normalizedData[index] = val / maxVal
+	# Return the normalized array
 	return normalizedData
 
 
@@ -113,6 +108,7 @@ def parseFile(fileName):
 	f = open(fileName, 'r')
 	rssi = {}
 	lqi = {}
+	node_id={};
 	etx = {}
 	sink = 1
 	u = 0
@@ -125,7 +121,6 @@ def parseFile(fileName):
 			u = data[0]
 			etx[u] = float(data[1])
 		elif len(data) == 7: # Else RSSI and LQI
-			print data
 			u = data[0]
 			v = data[1]
 			# data[2] is total amount of packets
@@ -133,38 +128,82 @@ def parseFile(fileName):
 			lqi[(u, v)] = float(data[4])
 			rssi[(u, v)] = float(data[5])
 	
-	print etx
 	return (sink, rssi, lqi, etx)
 
 if __name__ == "__main__":
-	rssiGraph = nx.DiGraph() # The graph holding data about RSSI
-	rssiBestEdges = []       # The optimal RSSI edge for each node
-	lqiGraph = nx.DiGraph()  # The graph holding data about LQI
-	lqiBestEdges = []        # The optimal LQI edge for each node
 	(sink, rssi, lqi, etx) = parseFile("graph.txt")
-	
+
+	# Normalize the lqi and rssi values.
 	normLqi = normalizeData(lqi)
-	normRssi = normalizeData(rssi, True)
+	normRssi = normalizeData(rssi)
 
-	for (u, v) in normLqi:
-		if u not in lqiGraph.nodes():
-			lqiGraph.add_node(u)
-		if v not in lqiGraph.nodes():
-			lqiGraph.add_node(u)
-		lqiGraph.add_edge(u, v, weight = normLqi[(u, v)])
-
-	for (u, v) in normRssi:
+	# Create the RSSI graph
+	rssiGraph = nx.DiGraph() # The graph holding data about RSSI
+	for u, v in normRssi:
 		if u not in rssiGraph.nodes():
 			rssiGraph.add_node(u)
 		if v not in rssiGraph.nodes():
-			rssiGraph.add_node(u)
+			rssiGraph.add_node(v)
 		rssiGraph.add_edge(u, v, weight = normRssi[(u, v)])
 
+	# Create the LQI Graph
+	lqiGraph = nx.DiGraph()  # The graph holding data about LQI
+	for u, v in normLqi:
+		if u not in lqiGraph.nodes():
+			lqiGraph.add_node(u)
+		if v not in lqiGraph.nodes():
+			lqiGraph.add_node(v)
+		lqiGraph.add_edge(u, v, weight = normLqi[(u, v)])
+
+	bestRssiMst = None
+	bestRssiVal = 0
+	bestRssiSink = None
+	for sink in rssiGraph.nodes():
+		mst = prim(rssiGraph, sink)
+		if mst != None:
+			val = 0
+			for u, v, data in mst.edges(data=True):
+				val += data['weight']
+			if val > bestRssiVal:
+				bestRssiMst = mst
+				bestRssiVal = val
+				bestRssiSink = sink
+
+	bestLqiMst = None
+	bestLqiVal = 0
+	bestLqiSink = None
+	for sink in lqiGraph.nodes():
+		mst = prim(lqiGraph, sink)
+		if mst == None:
+			continue
+		else:
+			val = 0
+			for u, v, data in mst.edges(data=True):
+				val += data['weight']
+			if val > bestLqiVal:
+				bestLqiMst = mst
+				bestLqiVal = val
+				bestLqiSink = sink
+
+	print "Best RSSI sink: " + bestRssiSink
+	print "Best LQI sink: " + bestLqiSink
+
+	# Draw the graphs and the MSTs
 	drawGraph(rssiGraph, 'RSSI Graph', 1)
-	rssiMst = prim(rssiGraph, sink)
-	drawGraph(rssiMst, 'RSSI MST', 2)
 	drawGraph(lqiGraph, 'LQI Graph', 3)
-	lqiMst = prim(lqiGraph, sink)
-	drawGraph(lqiMst, 'LQI MST', 4)
+
+	if bestRssiMst != None:
+		drawGraph(bestRssiMst, 'RSSI MST', 2)
+	if bestLqiMst != None:
+		drawGraph(bestLqiMst, 'LQI MST', 4)
+
+	#Calculate the betweeness centrality of the nodes.
+	BC_rssi = nx.betweenness_centrality(rssiGraph,None,False,'normRssi')        
+	BC_lqi = nx.betweenness_centrality(lqiGraph,None,False,'normLqi')
+
+	#print "Betweeness centrality nodes ranking, of RSSI graph"
+	print(BC_rssi)
+	#print('\nBetweeness centrality nodes ranking, of LQI graph\n')
+	#print(BC_lqi)
 	plt.show()
 	
