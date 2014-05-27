@@ -72,9 +72,9 @@ broadcast_receive(struct broadcast_conn* c, const rimeaddr_t* from)
         rmes_id = ((uint8_t*) packetbuf_dataptr() + strlen(broadcast_tag))[0];
     }
 
-    //    printf("%d.%d:  broadcast from %d.%d  to me, message id: %d \n",
-    //           rimeaddr_node_addr.u8[0], rimeaddr_node_addr.u8[1],
-    //           from->u8[0], from->u8[1], rmes_id);
+//    printf("%d.%d:  broadcast from %d.%d  to me, message id: %d \n",
+//           rimeaddr_node_addr.u8[0], rimeaddr_node_addr.u8[1],
+//           from->u8[0], from->u8[1], rmes_id);
 
     uint16_t lqi = packetbuf_attr(PACKETBUF_ATTR_LINK_QUALITY);
     uint16_t rssi = packetbuf_attr(PACKETBUF_ATTR_RSSI);
@@ -85,7 +85,7 @@ broadcast_receive(struct broadcast_conn* c, const rimeaddr_t* from)
     if (cn != NULL) {
         etx = cn->rtmetric;
         etx_accumulator = cn->le.etx_accumulator;
-        printf("my rtmetric:  %d   etx_accumulator: %d  with link %d.%d\n", etx, etx_accumulator, from->u8[1], from->u8[0]);
+        printf("my rtmetric:  %d   etx_accumulator: %d  with link %d.%d\n", etx, etx_accumulator, cn->addr.u8[0],cn->addr.u8[1]);
     }
 
     datacom_neighbor_t* n = get_neighbor_by_rimeaddr(*from);
@@ -103,7 +103,7 @@ broadcast_receive(struct broadcast_conn* c, const rimeaddr_t* from)
         add_or_update_neighbor(n->sender, 0, 0, rmes_id, lqi, rssi, etx, etx_accumulator);
     }
 
-//    print_n();
+    //    print_n();
 
 
 }
@@ -122,12 +122,12 @@ PROCESS_THREAD(example_collect_process, ev, data)
     PROCESS_BEGIN();
 
     // Set TX power
-    cc2420_set_txpower(DEFAULT_TX_POWER);
+    //    cc2420_set_txpower(DEFAULT_TX_POWER);
 
-    printf("%d.%d: packetbuf txpower=%d\n", 
-        rimeaddr_node_addr.u8[0], rimeaddr_node_addr.u8[1],
-        packetbuf_attr(PACKETBUF_ATTR_RADIO_TXPOWER));
-    
+    //    printf("%d.%d: packetbuf txpower=%d\n", 
+    //        rimeaddr_node_addr.u8[0], rimeaddr_node_addr.u8[1],
+    //        packetbuf_attr(PACKETBUF_ATTR_RADIO_TXPOWER));
+
 
     collect_open(&tc, 130, COLLECT_ROUTER, &callbacks);
     if (rimeaddr_node_addr.u8[0] == 1 &&
