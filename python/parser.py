@@ -1,8 +1,7 @@
 #/usr/bin/python2.7
-import re
+import re,sys
 import networkx as nx
 import matplotlib.pyplot as plt
-
 
 # Returns the maximum distance over an array of vertices, V
 # given the distances from the sink of a graph
@@ -105,6 +104,7 @@ def normalizeData(d):
 
 
 def parseFile(fileName):
+	print "parsing file ", fileName
 	f = open(fileName, 'r')
 	rssi = {}
 	lqi = {}
@@ -131,7 +131,13 @@ def parseFile(fileName):
 	return (sink, rssi, lqi, etx)
 
 if __name__ == "__main__":
-	(sink, rssi, lqi, etx) = parseFile("graph.txt")
+
+
+	fname = "graph.txt"
+	if( len(sys.argv) > 1):
+		fname = sys.argv[1]
+
+	(sink, rssi, lqi, etx) = parseFile(fname)
 
 	# Normalize the lqi and rssi values.
 	normLqi = normalizeData(lqi)
