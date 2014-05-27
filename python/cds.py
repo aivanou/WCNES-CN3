@@ -25,10 +25,10 @@ def weight(ex,ey,Nx,Ny,IDx,IDy):
 def max_weight_node(g,nodes_id,allowed_colors):
 	if len(nodes_id) == 0:
 		return 0
-	max_node_id=-1
+	max_node_id=0
 	for nId in nodes_id:
 		if g.node[nId]['color'] in allowed_colors:
-			if max_node_id == -1 or \
+			if max_node_id == 0 or \
 			   weight(1,1,len(g[nId]),len(g[max_node_id]),nId,max_node_id) > 0:
 				max_node_id = nId
 	return max_node_id
@@ -116,21 +116,58 @@ def cds_bd_c2(g):
 		for nId in nodes_id:
 			black_nbrs = get_nodes_by_color_and_hop(g.neighbors(i),i-1,[2])
 			if len(black_nbrs) == 0:
-				max_node_id = max_weight_node(g,[x for x in get_nodes_by_color_and_hop(g.neighbors(nId),i-1,[0,1])],[0,1])
+				# print nId,g.neighbors(nId)
+				max_node_id = max_weight_node(g,get_nodes_by_color_and_hop(g.neighbors(nId),i-1,[0,1]),[0,1])
 				if max_node_id == 0:
 					print 'warning, graph is probably Directional'
 					continue
 				g.node[max_node_id]['color'] = 2
+				g.node[nId]['color'] = 1
 	cds_set = [x for x in g.nodes() if g.node[x]['color'] == 2]
 	return cds_set
 
+
+"""
+Centralized algorithm for building kmCDS
+described in http://cs.gsu.edu/~yli/papers/mobihoc08.pdf
+"""
+
+def icga(g,k,m):
+	get_nodes_by_state = lambda nodes,state,value: [x for x in nodes if g.node[x][state] == value]
+	get_nodes_by_degree = lambda nodes,degree: get_nodes_by_state(nodes ,'metric', degree)
+	get_nodes_by_color = lambda nodes,color: get_nodes_by_state(nodes ,'color', color)
+	
+	cds_set = cds_bd_c2(g)
+	for nId in g.nodes():
+		g.node[nId]['visited']=False
+		if not g.node[nId]['color'] == 2:
+			g.node[nId]['color'] = 0
+
+	while True:
+		white_nodes = get_nodes_by_color(g.nodes(),0)
+		stop=True
+		for nId in white_nodes:
+			bn = get_nodes_by_color(g.neighbors(nId),2)
+			if len(bn) < m:
+				stop=False
+		if stop: 
+			break
+		wn = [x for x in white_nodes if len(get_nodes_by_color(g.neighbors(x),2)) < m]
+		m_id = max([(get_nodes_by_color(g.neighbors(x),0),x) for x in wn])[1]
+		g.node[m_id]['color'] = 2
+
+
+	# for i in xrange(1,k-1):
 
 
 g=nx.DiGraph()
 g.add_edges_from([(1,2),(1,3),(1,6),(1,7),(2,4),(4,5),(5,6),(6,7),(6,8),(7,9),(8,9),\
 	              (2,1),(3,1),(6,1),(7,1),(4,2),(5,4),(6,5),(7,6),(8,6),(9,7),(9,8)])
 
+# icga(g,1,1)
+
 cds_set = cds_bd_c2(g)
 for i in g.nodes():
 	print i,g.node[i]
-print cds_set
+# print cds_set
+

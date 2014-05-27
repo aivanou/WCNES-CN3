@@ -53,7 +53,7 @@ recv(const rimeaddr_t *originator, uint8_t seqno, uint8_t hops)
         }
 
         for (i = 0; i < npackets; ++i) {
-            printf("packet information : from %d.%d  to %d.%d  total:  %d , lost: %d , {%d  %d   %d  %d} ,hops: %d  \n ",
+            printf("%d.%d   %d.%d  %d %d %d  %d   %d  %d  %d  \n ",
                    p[i].from.u8[0], p[i].from.u8[1],
                    p[i].to.u8[0], p[i].to.u8[1],
                    p[i].total_packets, p[i].lost_packets,
