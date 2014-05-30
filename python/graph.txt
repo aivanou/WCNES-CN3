@@ -1,11 +1,5 @@
-using saved target 'z1'
-/home/alex/contiki-2.7/tools/sky/serialdump-linux -b115200 /dev/ttyUSB0
-Rime started with address 75.0
-MAC 4b:00:00:00:00:00:00:00 Contiki 2.6 started. Node id is set to 75.
-CSMA ContikiMAC, channel check rate 8 Hz, radio channel 26
-Starting 'Collect information between nodes'
-I am sink ID: 75.0
 50.0   44.0  20 1 104  -21   8  240  0  
+zrositnroisntareisdon
  57.0   44.0  24 1 105  -21   8  89  0  
  75.0   44.0  20 6 107  -23   0  23  0  
  44.0   57.0  119 1 106  -31   23  8  0  
@@ -131,4 +125,3 @@ I am sink ID: 75.0
  57.0   50.0  24 0 103  -23   19  8  0  
  44.0   50.0  161 0 104  -23   8  8  0  
  75.0   50.0  40 0 106  -21   0  8  0  
- 

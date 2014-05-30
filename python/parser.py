@@ -24,7 +24,7 @@ def extractMax(V, distances):
 def prim(G, sink):
 	# The unvisited vertices
 	V = [n for n in G.nodes()]
-	distances = dict([(n, 0.0) for n in G.nodes()]) # V
+	distances = dict([(n, -100000.0) for n in G.nodes()]) # V
 	parents = dict([(n, None) for n in G.nodes()])
 	distances[sink] = 1.0 # The distance as reliability
 	while len(V) > 0:
@@ -110,19 +110,21 @@ def parseFile(fileName):
 	lqi = {}
 	node_id={};
 	etx = {}
-	sink = 1
+	sink = 75
 	u = 0
 	v = 0
 	for line in f:
-		data = line.strip().split(' ')
-		u = data[0]+"."+data[1]
-		v = data[2]+"."+data[3]
-		# data[2] is total amount of packets
-		# data[3] is packets lost
-		lqi[(u, v)] = float(data[7])
-		rssi[(u, v)] = float(data[8])
-	
-	return (sink, rssi, lqi, etx)
+		data = re.findall("[A-Za-z:,\ ]*([\-]*[0-9\.]+)", line)
+		print len(data)
+		if len(data) != 9:
+			continue
+		data = [d for d in data if len(d)>0]
+		u = data[0].strip()
+		v = data[1].strip()
+		lqi[(u, v)] = float(data[5])
+		rssi[(u, v)] = float(data[6])
+
+	return ("75.0", rssi, lqi, etx)
 
 if __name__ == "__main__":
 
@@ -185,8 +187,8 @@ if __name__ == "__main__":
 				bestLqiVal = val
 				bestLqiSink = sink
 
-	print "Best RSSI sink: " + bestRssiSink
-	print "Best LQI sink: " + bestLqiSink
+	print "Best RSSI sink: " , bestRssiSink
+	print "Best LQI sink: " , bestLqiSink
 
 	# Draw the graphs and the MSTs
 	drawGraph(rssiGraph, 'RSSI Graph', 1)

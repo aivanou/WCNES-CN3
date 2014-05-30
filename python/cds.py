@@ -94,6 +94,7 @@ def cds_bd_c2(g):
 		# select nodes with depth i
 		nodes_id=get_nodes_by_degree(g.nodes(),i)
 		# if we have only 1 node, we do not need to go to the while loop
+		print i,nodes_id,g.node[nodes_id[0]]['color']
 		if len(nodes_id)==1 and g.node[nodes_id[0]]['color']==0:
 			g.node[nodes_id[0]]['color'] = 2
 			color_neighbors(list(g.neighbors(nodes_id[0])),0,1)
@@ -184,15 +185,6 @@ def drawGraph(G, title, n):
 	plt.axis('off')
 	values=[G.node[n]['color'] for n in G.nodes()]
 	nx.draw(g, cmap = plt.get_cmap('jet'), node_color = values)
-	# nx.draw_networkx_labels(G, pos, font_size = 12, font_family = 'sans-serif')
-	# # nodes
-	# nx.draw_networkx_nodes(G, pos, cmap = plt.get_cmap('jet'), node_size=750)
-	# # edges
-	# nx.draw_networkx_edges(G, pos, edge_color = 'black', arrows = True)
-	# # edge labels
-	# edge_labels=dict([((u,v,),"%.2f" % float(1)) for u,v,d in G.edges(data=True)])
-
-	# nx.draw_networkx_edge_labels(G, pos, edge_labels=edge_labels, label_pos=0.75, font_color='black')
 	
 
 g=nx.DiGraph()
@@ -203,19 +195,19 @@ for n in g.nodes():
 	g.node[n]['color']=0
 
 
-cds_bd_c2(g)
+cds_set = cds_bd_c2(g)
 
 drawGraph(g,"CDS_BD_C2",1)
 
-for n in g.nodes():
-	g.node[n]['color']=0
+# for n in g.nodes():
+# 	g.node[n]['color']=0
 
-icga(g,2,1)
+# icga(g,2,1)
 
-drawGraph(g,"ICGA",2)
-plt.show()
+# drawGraph(g,"ICGA",2)
+# plt.show()
 # cds_set = cds_bd_c2(g)
 for i in g.nodes():
 	print i,g.node[i]
-# print cds_set
+print cds_set
 
