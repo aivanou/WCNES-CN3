@@ -114,19 +114,13 @@ def parseFile(fileName):
 	u = 0
 	v = 0
 	for line in f:
-		data = re.findall("[A-Za-z:,\ ]*([\-]*[0-9\.]+)", line)
-		if len(data) == 1:  # I am sink
-			sink = data[0]
-		elif len(data) == 2: # ETX
-			u = data[0]
-			etx[u] = float(data[1])
-		elif len(data) == 7: # Else RSSI and LQI
-			u = data[0]
-			v = data[1]
-			# data[2] is total amount of packets
-			# data[3] is packets lost
-			lqi[(u, v)] = float(data[4])
-			rssi[(u, v)] = float(data[5])
+		data = line.strip().split(' ')
+		u = data[0]+"."+data[1]
+		v = data[2]+"."+data[3]
+		# data[2] is total amount of packets
+		# data[3] is packets lost
+		lqi[(u, v)] = float(data[7])
+		rssi[(u, v)] = float(data[8])
 	
 	return (sink, rssi, lqi, etx)
 

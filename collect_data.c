@@ -46,7 +46,7 @@ recv(const rimeaddr_t *originator, uint8_t seqno, uint8_t hops)
         current_offset += sizeof (uint8_t);
 
         datacom_packet_lost_inf_t* p = (datacom_packet_lost_inf_t*) malloc(sizeof (datacom_packet_lost_inf_t) * npackets);
-        printf("Sink received %d packets\n", npackets);
+        //        printf("Sink received %d packets\n", npackets);
         for (i = 0; i < npackets; ++i) {
             memcpy(&p[i], addr + current_offset, sizeof (datacom_packet_lost_inf_t));
             current_offset += sizeof (datacom_packet_lost_inf_t);
@@ -85,7 +85,7 @@ broadcast_receive(struct broadcast_conn* c, const rimeaddr_t* from)
     if (cn != NULL) {
         etx = cn->rtmetric;
         etx_accumulator = cn->le.etx_accumulator;
-        printf("my rtmetric:  %d   etx_accumulator: %d  with link %d.%d\n", etx, etx_accumulator, cn->addr.u8[0], cn->addr.u8[1]);
+        //        printf("my rtmetric:  %d   etx_accumulator: %d  with link %d.%d\n", etx, etx_accumulator, cn->addr.u8[0], cn->addr.u8[1]);
     }
 
     datacom_neighbor_t* n = get_neighbor_by_rimeaddr(*from);
@@ -134,6 +134,9 @@ PROCESS_THREAD(example_collect_process, ev, data)
         rimeaddr_node_addr.u8[1] == 0) {
         printf("I am sink ID: %d.%d\n", rimeaddr_node_addr.u8[0], rimeaddr_node_addr.u8[1]);
         collect_set_sink(&tc, 1);
+    }
+    else {
+        printf("My address: %d.%d\n", rimeaddr_node_addr.u8[0], rimeaddr_node_addr.u8[1]);
     }
 
     broadcast_open(&bc, 129, &broactcast_calls);
@@ -184,7 +187,7 @@ PROCESS_THREAD(example_collect_process, ev, data)
 static void
 send_packets_to_sink()
 {
-    printf("sending packet lost information to the sink \n");
+    //    printf("sending packet lost information to the sink \n");
     int i;
     uint8_t curr_packet_length = 0;
 
@@ -215,7 +218,7 @@ send_packets_to_sink()
     }
     packetbuf_set_datalen(curr_packet_length);
 
-    collect_send(&tc, 15);
+    collect_send(&tc, 4);
 
 }
 

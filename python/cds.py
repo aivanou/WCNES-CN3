@@ -127,6 +127,14 @@ def cds_bd_c2(g):
 	return cds_set
 
 
+def is_k_connected(g,nodes,k):
+	for nId in nodes:
+		black_nbrs = [x for x in g.neighbors(nId) if g.node[x]['color'] == 2]
+		if len(black_nbrs) < k \
+			and len(g.neighbors(nId)) != len(black_nbrs):
+			return False
+	return True
+
 """
 Centralized algorithm for building kmCDS
 described in http://cs.gsu.edu/~yli/papers/mobihoc08.pdf
@@ -157,16 +165,56 @@ def icga(g,k,m):
 		g.node[m_id]['color'] = 2
 
 
-	# for i in xrange(1,k-1):
+	for i in xrange(1,k+1):
+		while not is_k_connected(g,get_nodes_by_color(g.nodes(),2),i):
+			node_id = max_weight_node(g,get_nodes_by_color(g.nodes(),0),[0,1])
+			if node_id == 0:
+				print 'warning, cannot find new node'
+				return				
+			g.node[node_id]['color']=2
+	for nId in g.nodes():
+		g.node[nId]['weight'] = g.node[nId]['color']
 
+
+def drawGraph(G, title, n):
+	# Find the sub-optimal edges
+	pos = nx.spring_layout(G) # positions for all nodes
+	plt.subplot(220 + n)
+	plt.title(title)
+	plt.axis('off')
+	values=[G.node[n]['color'] for n in G.nodes()]
+	nx.draw(g, cmap = plt.get_cmap('jet'), node_color = values)
+	# nx.draw_networkx_labels(G, pos, font_size = 12, font_family = 'sans-serif')
+	# # nodes
+	# nx.draw_networkx_nodes(G, pos, cmap = plt.get_cmap('jet'), node_size=750)
+	# # edges
+	# nx.draw_networkx_edges(G, pos, edge_color = 'black', arrows = True)
+	# # edge labels
+	# edge_labels=dict([((u,v,),"%.2f" % float(1)) for u,v,d in G.edges(data=True)])
+
+	# nx.draw_networkx_edge_labels(G, pos, edge_labels=edge_labels, label_pos=0.75, font_color='black')
+	
 
 g=nx.DiGraph()
-g.add_edges_from([(1,2),(1,3),(1,6),(1,7),(2,4),(4,5),(5,6),(6,7),(6,8),(7,9),(8,9),\
-	              (2,1),(3,1),(6,1),(7,1),(4,2),(5,4),(6,5),(7,6),(8,6),(9,7),(9,8)])
+g.add_edges_from([(1,2),(1,3),(1,6),(1,7),(2,4),(4,5),(5,6),(6,7),(6,8),(7,9),(8,9),(9,10),\
+	              (2,1),(3,1),(6,1),(7,1),(4,2),(5,4),(6,5),(7,6),(8,6),(9,7),(9,8),(10,9)])
 
-# icga(g,1,1)
+for n in g.nodes():
+	g.node[n]['color']=0
 
-cds_set = cds_bd_c2(g)
+
+cds_bd_c2(g)
+
+drawGraph(g,"CDS_BD_C2",1)
+
+for n in g.nodes():
+	g.node[n]['color']=0
+
+icga(g,2,1)
+
+drawGraph(g,"ICGA",2)
+plt.show()
+# cds_set = cds_bd_c2(g)
 for i in g.nodes():
 	print i,g.node[i]
 # print cds_set
