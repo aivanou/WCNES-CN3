@@ -1,7 +1,7 @@
 import sys
 import networkx as nx
 import matplotlib.pyplot as plt
-
+import re
 
 """
 Centralized CDS for wireless network
@@ -78,7 +78,7 @@ def cds_bd_c2(g):
 			if g.node[i]['color'] == color_from:
 				g.node[i]['color'] = color_to
 	# TODO: select leader with appropriate algorithm
-	leader=1
+	leader=g.nodes()[0]
 
 	for nId in g.nodes():
 		g.node[nId]['color']=0
@@ -187,27 +187,78 @@ def drawGraph(G, title, n):
 	nx.draw(g, cmap = plt.get_cmap('jet'), node_color = values)
 	
 
-g=nx.DiGraph()
-g.add_edges_from([(1,2),(1,3),(1,6),(1,7),(2,4),(4,5),(5,6),(6,7),(6,8),(7,9),(8,9),(9,10),\
-	              (2,1),(3,1),(6,1),(7,1),(4,2),(5,4),(6,5),(7,6),(8,6),(9,7),(9,8),(10,9)])
+def parseFile(fileName):
+	get_node_id=lambda l: int(l.split('.')[0])*256+int(l.split('.')[1])
+	print "parsing file ", fileName
+	f = open(fileName, 'r')
+	nodes={}
+	for line in f:
+		data = re.findall("[A-Za-z:,\ ]*([\-]*[0-9\.]+)", line)
+		if len(data) != 9:
+			continue
+		data = [d for d in data if len(d)>0]
+		u = data[0].strip()
+		v = data[1].strip()
+		if not get_node_id(u) in nodes:
+			nodes[get_node_id(u)] = list()
+		if not get_node_id(v) in nodes[get_node_id(u)]:
+			nodes[get_node_id(u)].append(get_node_id(v))	
+	
+	for u in nodes.keys():
+		for v in nodes[u]:
+			if not v in nodes.keys():
+				nodes[v]=list()
+			if not u in nodes[v]:
+				nodes[v].append(u)
+	return nodes
 
-for n in g.nodes():
-	g.node[n]['color']=0
-
-
-cds_set = cds_bd_c2(g)
-
-drawGraph(g,"CDS_BD_C2",1)
+# g=nx.DiGraph()
+# g.add_edges_from([(1,2),(1,3),(1,6),(1,7),(2,4),(4,5),(5,6),(6,7),(6,8),(7,9),(8,9),(9,10),\
+# 	              (2,1),(3,1),(6,1),(7,1),(4,2),(5,4),(6,5),(7,6),(8,6),(9,7),(9,8),(10,9)])
 
 # for n in g.nodes():
 # 	g.node[n]['color']=0
 
-# icga(g,2,1)
 
-# drawGraph(g,"ICGA",2)
-# plt.show()
 # cds_set = cds_bd_c2(g)
-for i in g.nodes():
-	print i,g.node[i]
-print cds_set
 
+# drawGraph(g,"CDS_BD_C2",1)
+
+# # for n in g.nodes():
+# # 	g.node[n]['color']=0
+
+# # icga(g,2,1)
+
+# # drawGraph(g,"ICGA",2)
+# # plt.show()
+# # cds_set = cds_bd_c2(g)
+# for i in g.nodes():
+# 	print i,g.node[i]
+# print cds_set
+
+if __name__ == "__main__":
+
+	fname = "graph.txt"
+
+	g=nx.DiGraph()
+
+	nodes= parseFile(fname)
+	
+	for u,vs in nodes.items():
+		for v in vs:
+			g.add_edge(u,v)
+
+	for n in g.nodes():
+		g.node[n]['color']=0
+
+	cds_set = cds_bd_c2(g)
+	print cds_set
+
+	drawGraph(g,"CDS_BD_C2",1)
+	for n in g.nodes():
+		g.node[n]['color']=0
+	
+	icga(g,2,1)
+	drawGraph(g,"ICGA",2)
+
+	plt.show()
