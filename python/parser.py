@@ -140,7 +140,7 @@ def parseFile(fileName):
 	v = 0
 	for line in f:
 		data = re.findall("[A-Za-z:,\ ]*([\-]*[0-9\.]+)", line)
-		print len(data)
+		#print len(data)
 		if len(data) != 9:
 			continue
 		data = [d for d in data if len(d)>0]
@@ -244,30 +244,30 @@ if __name__ == "__main__":
 	print "Best ETX sink: " , bestEtxSink
 
 	# Draw the graphs and the MSTs
-	plt.subplot(321)
+	plt.subplot(231)
 	drawGraph(rssiGraph, 'RSSI Graph', 0)
-	plt.subplot(323)
+	plt.subplot(232)
 	drawGraph(lqiGraph, 'LQI Graph', 0)
-	plt.subplot(325)
+	plt.subplot(233)
 	drawGraph(etxGraph, 'ETX Graph', 0)
 
 	if bestRssiMst != None:
-		plt.subplot(322)
+		plt.subplot(234)
 		drawGraph(bestRssiMst, 'RSSI MST', 0)
 	if bestLqiMst != None:
-		plt.subplot(324)
+		plt.subplot(235)
 		drawGraph(bestLqiMst, 'LQI MST', 0)
 	if bestEtxMst != None:
-		plt.subplot(326)
+		plt.subplot(236)
 		drawGraph(bestEtxMst, 'ETX MST', 0)
 
 	#Calculate the betweeness centrality of the nodes.
-	BC_rssi = nx.betweenness_centrality(rssiGraph,None,False,'normRssi')        
+	#BC_rssi = nx.betweenness_centrality(rssiGraph,None,False,'normRssi')        
 	BC_lqi = nx.betweenness_centrality(lqiGraph,None,False,'normLqi')
 
 	#print "Betweeness centrality nodes ranking, of RSSI graph"
-	print(BC_rssi)
+	#print(BC_rssi)
 	#print('\nBetweeness centrality nodes ranking, of LQI graph\n')
-	print(BC_lqi)
+	#print(BC_lqi)
 	plt.show()
 	
