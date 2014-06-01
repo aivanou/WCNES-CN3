@@ -144,28 +144,16 @@ if __name__ == "__main__":
 	# Create the RSSI graph
 	rssiGraph = nx.DiGraph() # The graph holding data about RSSI
 	for u, v in normRssi:
-		if u not in rssiGraph.nodes():
-			rssiGraph.add_node(u)
-		if v not in rssiGraph.nodes():
-			rssiGraph.add_node(v)
 		rssiGraph.add_edge(u, v, weight = normRssi[(u, v)])
 
 	# Create the LQI Graph
 	lqiGraph = nx.DiGraph()  # The graph holding data about LQI
 	for u, v in normLqi:
-		if u not in lqiGraph.nodes():
-			lqiGraph.add_node(u)
-		if v not in lqiGraph.nodes():
-			lqiGraph.add_node(v)
 		lqiGraph.add_edge(u, v, weight = normLqi[(u, v)])
 
 	# Create the ETX Graph
 	etxGraph = nx.DiGraph()  # The graph holding data about ETX
 	for u, v in etx:
-		if u not in etxGraph.nodes():
-			etxGraph.add_node(u)
-		if v not in etxGraph.nodes():
-			etxGraph.add_node(v)
 		etxGraph.add_edge(u, v, weight = etx[(u, v)])
 
 	bestRssiMst = None
