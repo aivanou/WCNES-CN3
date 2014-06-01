@@ -103,30 +103,6 @@ def normalizeData(d):
 	# Return the normalized array
 	return normalizedData
 
-def normalizeETX(d):
-
-	#Create a new dict for holding the normalized data
-	normalizedData = dict([(n, d[n]) for n in d])
-
-	# Get the maximum and minimum values
-	maxVal = max(d.values())
-	minVal = min(d.values())
-
-	#Retransform etx values, so that smallest value represents
-	#the worse value (the biggest ETX)
-	for index in d:			
-			normalizedData[index] = abs((d[index] - maxVal) / maxVal)
-
-	# Get the maximum and minimum values
-	#maxVal = max(normalizedData.values())
-	#minVal = min(normalizedData.values())
-
-	"""for index in d:
-			val = normalizedData[index]
-			normalizedData[index] = val / maxVal	"""
-
-	return normalizedData
-
 
 def parseFile(fileName):
 	print "parsing file ", fileName
@@ -164,7 +140,6 @@ if __name__ == "__main__":
 	# Normalize the lqi and rssi values.
 	normLqi = normalizeData(lqi)
 	normRssi = normalizeData(rssi)
-	normETX = normalizeETX(etx)
 
 	# Create the RSSI graph
 	rssiGraph = nx.DiGraph() # The graph holding data about RSSI
@@ -186,12 +161,12 @@ if __name__ == "__main__":
 
 	# Create the ETX Graph
 	etxGraph = nx.DiGraph()  # The graph holding data about ETX
-	for u, v in normETX:
+	for u, v in etx:
 		if u not in etxGraph.nodes():
 			etxGraph.add_node(u)
 		if v not in etxGraph.nodes():
 			etxGraph.add_node(v)
-		etxGraph.add_edge(u, v, weight = normETX[(u, v)])
+		etxGraph.add_edge(u, v, weight = etx[(u, v)])
 
 	bestRssiMst = None
 	bestRssiVal = 0
