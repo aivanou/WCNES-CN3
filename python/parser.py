@@ -22,12 +22,13 @@ def extractMax(V, distances):
 # Returns the minimum spanning tree of the tree G with the given sink
 # If the number of edges in the resulting MST is less than the number 
 # of nodes None will be returned.
-def prim(G, sink):
+def dijkstras(G, sink):
 	# The unvisited vertices
 	V = [n for n in G.nodes()]
 	distances = dict([(n, -100000.0) for n in G.nodes()]) # V
 	parents = dict([(n, None) for n in G.nodes()])
 	distances[sink] = 1.0 # The distance as reliability
+	hops = dict([(n, 0) for n in G.nodes()])
 	while len(V) > 0:
 		# Get the node with the lowest value from the unvisited vertices
 		u = extractMax(V, distances)
@@ -41,12 +42,13 @@ def prim(G, sink):
 					if v in V and d > distances[v]:
 						distances[v] = d
 						parents[v] = u
+						hops[v] = hops[u] + 1
 		else:
 			# an error occured
 			break
 	# All nodes, but the sink, must have a parent node.
 	if parents.values().count(None) > 1:
-		return None
+		return (None, 0, 0)
 	else:
 		# Greate the actial graph
 		mst = nx.Graph()
@@ -54,10 +56,12 @@ def prim(G, sink):
 		for node in G.nodes():
 			mst.add_node(node)
 		# Add the edges
+		weightSum = 0
 		for v, u, data in G.edges(data=True):
 			if parents[v] == u:
 				mst.add_edge(v, u, weight = data['weight'])
-		return mst
+				weightSum += data['weight']
+		return (mst, weightSum, max(hops.values()))
 
 # The networkx "arrows" for the edges are just thicker were they end and are not really arrows.
 # The weight of the edges are outputted close to the node they go from, the originating node.
@@ -159,12 +163,10 @@ if __name__ == "__main__":
 	bestRssiMst = None
 	bestRssiVal = 0
 	bestRssiSink = None
+	bestRssiDiameter = float('inf')
 	for sink in rssiGraph.nodes():
-		mst = prim(rssiGraph, sink)
-		if mst != None:
-			val = 0
-			for u, v, data in mst.edges(data=True):
-				val += data['weight']
+		(mst, val, diameter) = dijkstras(rssiGraph, sink)
+		if mst != None or (val == bestRssiVal and diameter < bestRssiDiameter):
 			if val > bestRssiVal:
 				bestRssiMst = mst
 				bestRssiVal = val
@@ -173,15 +175,11 @@ if __name__ == "__main__":
 	bestLqiMst = None
 	bestLqiVal = 0
 	bestLqiSink = None
+	bestLqiDiameter = float('inf')
 	for sink in lqiGraph.nodes():
-		mst = prim(lqiGraph, sink)
-		if mst == None:
-			continue
-		else:
-			val = 0
-			for u, v, data in mst.edges(data=True):
-				val += data['weight']
-			if val > bestLqiVal:
+		(mst, val, diameter) = dijkstras(lqiGraph, sink)
+		if mst != None:
+			if val > bestLqiVal or (val == bestLqiVal and diameter < bestLqiDiameter):
 				bestLqiMst = mst
 				bestLqiVal = val
 				bestLqiSink = sink
@@ -189,15 +187,11 @@ if __name__ == "__main__":
 	bestEtxMst = None
 	bestEtxVal = 0
 	bestEtxSink = None
+	bestEtxDiameter = float('inf')
 	for sink in etxGraph.nodes():
-		mst = prim(etxGraph, sink)
-		if mst == None:
-			continue
-		else:
-			val = 0
-			for u, v, data in mst.edges(data=True):
-				val += data['weight']
-			if val > bestEtxVal:
+		(mst, val, diameter) = dijkstras(etxGraph, sink)
+		if mst != None:
+			if val > bestEtxVal or (val == bestEtxVal and diameter < bestEtxDiameter):
 				bestEtxMst = mst
 				bestEtxVal = val
 				bestEtxSink = sink
