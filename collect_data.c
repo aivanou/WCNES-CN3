@@ -15,7 +15,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define MAX_REQUESTS_SEND 4
+#define MAX_REQUESTS_SEND 8
 
 // PA_LEVEL, 7 = -15dBm
 #define DEFAULT_TX_POWER 7
@@ -46,12 +46,12 @@ recv(const rimeaddr_t *originator, uint8_t seqno, uint8_t hops)
         current_offset += sizeof (uint8_t);
 
         datacom_packet_lost_inf_t* p = (datacom_packet_lost_inf_t*) malloc(sizeof (datacom_packet_lost_inf_t) * npackets);
-        //        printf("Sink received %d packets\n", npackets);
+        printf("Sink received %d packets\n", npackets);
         for (i = 0; i < npackets; ++i) {
             memcpy(&p[i], addr + current_offset, sizeof (datacom_packet_lost_inf_t));
             current_offset += sizeof (datacom_packet_lost_inf_t);
         }
-
+        printf("received pakcets\n");
         for (i = 0; i < npackets; ++i) {
             printf("%d.%d   %d.%d  %d %d %d  %d   %d  %d  %d  \n ",
                    p[i].from.u8[0], p[i].from.u8[1],
@@ -130,7 +130,7 @@ PROCESS_THREAD(example_collect_process, ev, data)
 
 
     collect_open(&tc, 130, COLLECT_ROUTER, &callbacks);
-    if (rimeaddr_node_addr.u8[0] == 75 &&
+    if (rimeaddr_node_addr.u8[0] == 1 &&
         rimeaddr_node_addr.u8[1] == 0) {
         printf("I am sink ID: %d.%d\n", rimeaddr_node_addr.u8[0], rimeaddr_node_addr.u8[1]);
         collect_set_sink(&tc, 1);
@@ -164,7 +164,7 @@ PROCESS_THREAD(example_collect_process, ev, data)
         if (max_total_packet >= MAX_REQUESTS_SEND) {
             send_packets_to_sink();
             max_total_packet = 0;
-            //clean_list();
+            clean_list();
         }
 
         //        int nbrs = collect_neighbor_list_num(&tc.neighbor_list);
@@ -199,6 +199,7 @@ send_packets_to_sink()
     memcpy(addr + curr_packet_length, (void*) &neighbor_list_size, sizeof (uint8_t));
     curr_packet_length += sizeof (uint8_t);
 
+    printf("\n");
     datacom_neighbor_t* curr_el = neighbor_list;
     for (i = 0; i < neighbor_list_size; ++i) {
         if (curr_el == NULL)
@@ -212,10 +213,12 @@ send_packets_to_sink()
         p.rssi = curr_el->rssi;
         p.etx = curr_el->etx;
         p.etx_accumulator = curr_el->etx_accumulator;
+        printf("from: %d.%d to %d.%d %d %d  ;", p.from.u8[0], p.from.u8[1], p.to.u8[0], p.to.u8[1], p.lqi, p.rssi);
         memcpy(addr + curr_packet_length, (void*) &p, sizeof (datacom_packet_lost_inf_t));
         curr_packet_length += sizeof (datacom_packet_lost_inf_t);
         curr_el = curr_el->next;
     }
+    printf("\n");
     packetbuf_set_datalen(curr_packet_length);
 
     collect_send(&tc, 4);
@@ -309,8 +312,8 @@ clean_list()
     datacom_neighbor_t* prev_element = NULL;
     while (curr_element != NULL) {
         prev_element = curr_element;
-        free(prev_element);
         curr_element = curr_element->next;
+        free(prev_element);
     }
     neighbor_list = NULL;
 }

@@ -2,6 +2,7 @@ import sys
 import networkx as nx
 import matplotlib.pyplot as plt
 import re
+import random
 
 """
 Centralized CDS for wireless network
@@ -34,18 +35,22 @@ def max_weight_node(g,nodes_id,allowed_colors):
 	return max_node_id
 
 def count_hops(g,nodeId):
-	g.node[nodeId]['visited']=True
-	nextNodeId=None
-	for nId in g.neighbors(nodeId):
-		if not 'visited' in g.node[nId] or not g.node[nId]['visited']:
-			g.node[nId]['metric']=g.node[nodeId]['metric']+1
-	for nId in g.neighbors(nodeId):
-		if not 'visited' in g.node[nId] or not g.node[nId]['visited']:
-			nextNodeId=nId
-			break
-	if nextNodeId==None:
-		return g
-	return count_hops(g,nextNodeId)
+	stack_nodes = list()
+	stack_nodes.append(nodeId)
+	while len(stack_nodes) > 0:
+		nodeId = stack_nodes[0]
+		g.node[nodeId]['visited']=True
+		for nId in g.neighbors(nodeId):
+			if not 'metric' in g.node[nId] \
+			   or g.node[nId]['metric'] == -1 or g.node[nId]['metric'] > g.node[nodeId]['metric'] + 1:
+				g.node[nId]['metric']=g.node[nodeId]['metric']+1
+				g.node[nId]['parent']=nodeId
+
+		for nId in g.neighbors(nodeId):
+			if not 'visited' in g.node[nId] or not g.node[nId]['visited']:
+				stack_nodes.append(nId)
+		stack_nodes.remove(nodeId)
+	return g
 """
 implementation of centralized cds_bd_c2 algorithm, 
 described in the paper: http://www.cs.gsu.edu/yli/papers/TPDS09.pdf
@@ -81,9 +86,14 @@ def cds_bd_c2(g):
 	leader=g.nodes()[0]
 
 	for nId in g.nodes():
-		g.node[nId]['color']=0
+		g.node[nId]['color'] = 0
+		g.node[nId]['metric'] = -1
 	g.node[leader]['metric']=0
+	g.node[leader]['parent']=None
 	g=count_hops(g,leader)
+	print 'ok'
+	for nId in g.nodes():
+		print nId,g.node[nId]
 	maxHop=max([g.node[i]['metric'] for i in g.nodes()])
 	get_nodes_by_state = lambda nodes,state,value: [x for x in nodes if g.node[x][state] == value]
 	get_nodes_by_degree = lambda nodes,degree: get_nodes_by_state(nodes ,'metric', degree)
@@ -94,7 +104,6 @@ def cds_bd_c2(g):
 		# select nodes with depth i
 		nodes_id=get_nodes_by_degree(g.nodes(),i)
 		# if we have only 1 node, we do not need to go to the while loop
-		print i,nodes_id,g.node[nodes_id[0]]['color']
 		if len(nodes_id)==1 and g.node[nodes_id[0]]['color']==0:
 			g.node[nodes_id[0]]['color'] = 2
 			color_neighbors(list(g.neighbors(nodes_id[0])),0,1)
@@ -106,7 +115,7 @@ def cds_bd_c2(g):
 			#color it to black and its neighbors to the gray
 			g.node[max_node_id]['color'] = 2
 			color_neighbors(g.neighbors(max_node_id),0,1)
-
+	print 'end'
 	#connecting vertices
 	#if on the hop == i we have node that has no black neighbors on the hop == i-1 
 	#we select the neigbhor of the hop == i-1 with the highest weight
@@ -123,7 +132,7 @@ def cds_bd_c2(g):
 					print 'warning, graph is probably Directional'
 					continue
 				g.node[max_node_id]['color'] = 2
-				g.node[nId]['color'] = 1
+				# g.node[nId]['color'] = 1
 	cds_set = [x for x in g.nodes() if g.node[x]['color'] == 2]
 	return cds_set
 
@@ -212,53 +221,49 @@ def parseFile(fileName):
 				nodes[v].append(u)
 	return nodes
 
-# g=nx.DiGraph()
-# g.add_edges_from([(1,2),(1,3),(1,6),(1,7),(2,4),(4,5),(5,6),(6,7),(6,8),(7,9),(8,9),(9,10),\
-# 	              (2,1),(3,1),(6,1),(7,1),(4,2),(5,4),(6,5),(7,6),(8,6),(9,7),(9,8),(10,9)])
+g=nx.DiGraph()
+g.add_edges_from([(1,2),(1,3),(1,6),(1,7),(2,4),(4,5),(5,6),(6,7),(6,8),(7,9),(8,9),(9,10),\
+	              (2,1),(3,1),(6,1),(7,1),(4,2),(5,4),(6,5),(7,6),(8,6),(9,7),(9,8),(10,9)])
 
-# for n in g.nodes():
-# 	g.node[n]['color']=0
+for n in g.nodes():
+	g.node[n]['color']=0
 
 
-# cds_set = cds_bd_c2(g)
+cds_set = cds_bd_c2(g)
 
-# drawGraph(g,"CDS_BD_C2",1)
+drawGraph(g,"CDS_BD_C2",1)
 
-# # for n in g.nodes():
-# # 	g.node[n]['color']=0
+for n in g.nodes():
+	g.node[n]['color']=0
 
-# # icga(g,2,1)
+icga(g,2,1)
 
-# # drawGraph(g,"ICGA",2)
-# # plt.show()
-# # cds_set = cds_bd_c2(g)
-# for i in g.nodes():
-# 	print i,g.node[i]
-# print cds_set
+drawGraph(g,"ICGA",2)
+plt.show()
 
-if __name__ == "__main__":
+# if __name__ == "__main__":
 
-	fname = "graph.txt"
+# 	fname = "graph.txt"
 
-	g=nx.DiGraph()
+# 	g=nx.DiGraph()
 
-	nodes= parseFile(fname)
+# 	nodes= parseFile(fname)
 	
-	for u,vs in nodes.items():
-		for v in vs:
-			g.add_edge(u,v)
+# 	for u,vs in nodes.items():
+# 		for v in vs:
+# 			g.add_edge(u,v)
 
-	for n in g.nodes():
-		g.node[n]['color']=0
+# 	for n in g.nodes():
+# 		g.node[n]['color']=0
 
-	cds_set = cds_bd_c2(g)
-	print cds_set
+# 	cds_set = cds_bd_c2(g)
+# 	print cds_set
 
-	drawGraph(g,"CDS_BD_C2",1)
-	for n in g.nodes():
-		g.node[n]['color']=0
+# 	drawGraph(g,"CDS_BD_C2",1)
+# 	for n in g.nodes():
+# 		g.node[n]['color']=0
 	
-	icga(g,2,1)
-	drawGraph(g,"ICGA",2)
+# 	icga(g,2,1)
+# 	drawGraph(g,"ICGA",2)
 
-	plt.show()
+# 	plt.show()
