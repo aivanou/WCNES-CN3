@@ -1,6 +1,7 @@
 #/usr/bin/python2.7
 import re,sys
 import networkx as nx
+from pylab import *
 import matplotlib.pyplot as plt
 
 # Returns the maximum distance over an array of vertices, V
@@ -63,7 +64,7 @@ def prim(G, sink):
 def drawGraph(G, title, n):
 	# Find the sub-optimal edges
 	pos = nx.spring_layout(G) # positions for all nodes
-	plt.subplot(220 + n)
+	#plt.subplot(220 + n)
 	plt.title(title)
 	plt.axis('off')
 	nx.draw_networkx_labels(G, pos, font_size = 10, font_family = 'sans-serif')
@@ -115,7 +116,7 @@ def parseFile(fileName):
 	v = 0
 	for line in f:
 		data = re.findall("[A-Za-z:,\ ]*([\-]*[0-9\.]+)", line)
-		print len(data)
+		#print len(data)
 		if len(data) != 9:
 			continue
 		data = [d for d in data if len(d)>0]
@@ -123,7 +124,8 @@ def parseFile(fileName):
 		v = data[1].strip()
 		lqi[(u, v)] = float(data[5])
 		rssi[(u, v)] = float(data[6])
-
+		etx[(u, v)] = float(data[7])
+	
 	return ("75.0", rssi, lqi, etx)
 
 if __name__ == "__main__":
@@ -142,20 +144,17 @@ if __name__ == "__main__":
 	# Create the RSSI graph
 	rssiGraph = nx.DiGraph() # The graph holding data about RSSI
 	for u, v in normRssi:
-		if u not in rssiGraph.nodes():
-			rssiGraph.add_node(u)
-		if v not in rssiGraph.nodes():
-			rssiGraph.add_node(v)
 		rssiGraph.add_edge(u, v, weight = normRssi[(u, v)])
 
 	# Create the LQI Graph
 	lqiGraph = nx.DiGraph()  # The graph holding data about LQI
 	for u, v in normLqi:
-		if u not in lqiGraph.nodes():
-			lqiGraph.add_node(u)
-		if v not in lqiGraph.nodes():
-			lqiGraph.add_node(v)
 		lqiGraph.add_edge(u, v, weight = normLqi[(u, v)])
+
+	# Create the ETX Graph
+	etxGraph = nx.DiGraph()  # The graph holding data about ETX
+	for u, v in etx:
+		etxGraph.add_edge(u, v, weight = etx[(u, v)])
 
 	bestRssiMst = None
 	bestRssiVal = 0
@@ -187,24 +186,50 @@ if __name__ == "__main__":
 				bestLqiVal = val
 				bestLqiSink = sink
 
+	bestEtxMst = None
+	bestEtxVal = 0
+	bestEtxSink = None
+	for sink in etxGraph.nodes():
+		mst = prim(etxGraph, sink)
+		if mst == None:
+			continue
+		else:
+			val = 0
+			for u, v, data in mst.edges(data=True):
+				val += data['weight']
+			if val > bestEtxVal:
+				bestEtxMst = mst
+				bestEtxVal = val
+				bestEtxSink = sink
+
 	print "Best RSSI sink: " , bestRssiSink
 	print "Best LQI sink: " , bestLqiSink
+	print "Best ETX sink: " , bestEtxSink
 
 	# Draw the graphs and the MSTs
-	drawGraph(rssiGraph, 'RSSI Graph', 1)
-	drawGraph(lqiGraph, 'LQI Graph', 3)
+	plt.subplot(231)
+	drawGraph(rssiGraph, 'RSSI Graph', 0)
+	plt.subplot(232)
+	drawGraph(lqiGraph, 'LQI Graph', 0)
+	plt.subplot(233)
+	drawGraph(etxGraph, 'ETX Graph', 0)
 
 	if bestRssiMst != None:
-		drawGraph(bestRssiMst, 'RSSI MST', 2)
+		plt.subplot(234)
+		drawGraph(bestRssiMst, 'RSSI MST', 0)
 	if bestLqiMst != None:
-		drawGraph(bestLqiMst, 'LQI MST', 4)
+		plt.subplot(235)
+		drawGraph(bestLqiMst, 'LQI MST', 0)
+	if bestEtxMst != None:
+		plt.subplot(236)
+		drawGraph(bestEtxMst, 'ETX MST', 0)
 
 	#Calculate the betweeness centrality of the nodes.
-	BC_rssi = nx.betweenness_centrality(rssiGraph,None,False,'normRssi')        
+	#BC_rssi = nx.betweenness_centrality(rssiGraph,None,False,'normRssi')        
 	BC_lqi = nx.betweenness_centrality(lqiGraph,None,False,'normLqi')
 
 	#print "Betweeness centrality nodes ranking, of RSSI graph"
-	print(BC_rssi)
+	#print(BC_rssi)
 	#print('\nBetweeness centrality nodes ranking, of LQI graph\n')
 	#print(BC_lqi)
 	plt.show()
