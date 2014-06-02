@@ -15,10 +15,13 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define MAX_REQUESTS_SEND 8
+#define MAX_REQUESTS_SEND 1
 
 // PA_LEVEL, 7 = -15dBm
 #define DEFAULT_TX_POWER 7
+
+static int SINK_LOW_VALUE = 1;
+static int SINK_HIGH_VALUE = 0;
 
 static struct collect_conn tc;
 static struct broadcast_conn bc;
@@ -85,7 +88,7 @@ broadcast_receive(struct broadcast_conn* c, const rimeaddr_t* from)
     if (cn != NULL) {
         etx = cn->rtmetric;
         etx_accumulator = cn->le.etx_accumulator;
-        //        printf("my rtmetric:  %d   etx_accumulator: %d  with link %d.%d\n", etx, etx_accumulator, cn->addr.u8[0], cn->addr.u8[1]);
+        printf("my rtmetric:  %d   etx_accumulator: %d  with link %d.%d\n", etx, etx_accumulator, cn->addr.u8[0], cn->addr.u8[1]);
     }
 
     datacom_neighbor_t* n = get_neighbor_by_rimeaddr(*from);
@@ -130,8 +133,8 @@ PROCESS_THREAD(example_collect_process, ev, data)
 
 
     collect_open(&tc, 130, COLLECT_ROUTER, &callbacks);
-    if (rimeaddr_node_addr.u8[0] == 1 &&
-        rimeaddr_node_addr.u8[1] == 0) {
+    if (rimeaddr_node_addr.u8[0] == SINK_LOW_VALUE &&
+        rimeaddr_node_addr.u8[1] == SINK_HIGH_VALUE) {
         printf("I am sink ID: %d.%d\n", rimeaddr_node_addr.u8[0], rimeaddr_node_addr.u8[1]);
         collect_set_sink(&tc, 1);
     }
@@ -145,38 +148,43 @@ PROCESS_THREAD(example_collect_process, ev, data)
     etimer_set(&et, 25 * CLOCK_SECOND);
     PROCESS_WAIT_UNTIL(etimer_expired(&et));
 
-    while (1) {
-
-        current_message_id += 1;
-        etimer_set(&et, 5 * CLOCK_SECOND);
-        PROCESS_WAIT_UNTIL(etimer_expired(&et));
-
-        packetbuf_clear();
-        void* addr = packetbuf_dataptr();
-        memcpy(addr, broadcast_tag, strlen(broadcast_tag));
-        memcpy(addr + strlen(broadcast_tag), &current_message_id, sizeof (uint8_t));
-        packetbuf_set_datalen(strlen(broadcast_tag) + sizeof (uint8_t));
-
-        broadcast_send(&bc);
-        max_total_packet += 1;
-
-        //        printf("m number :%d \n", max_total_packet);
-        if (max_total_packet >= MAX_REQUESTS_SEND) {
-            send_packets_to_sink();
-            max_total_packet = 0;
-            clean_list();
-        }
-
-        //        int nbrs = collect_neighbor_list_num(&tc.neighbor_list);
-        //        int i;
-        //        for (i = 0; i < nbrs; ++i) {
-        //            struct collect_neighbor* cn = collect_neighbor_list_get(&tc.neighbor_list, i);
-        //            printf("n: %d.%d", cn->addr.u8[0], cn->addr.u8[1]);
-        //        }
-        //        printf("\n");
-
+    if (rimeaddr_node_addr.u8[0] == SINK_LOW_VALUE &&
+        rimeaddr_node_addr.u8[1] == SINK_HIGH_VALUE) {
+        //do something
     }
+    else {
+        while (1) {
 
+            current_message_id += 1;
+            etimer_set(&et, 5 * CLOCK_SECOND);
+            PROCESS_WAIT_UNTIL(etimer_expired(&et));
+
+            packetbuf_clear();
+            void* addr = packetbuf_dataptr();
+            memcpy(addr, broadcast_tag, strlen(broadcast_tag));
+            memcpy(addr + strlen(broadcast_tag), &current_message_id, sizeof (uint8_t));
+            packetbuf_set_datalen(strlen(broadcast_tag) + sizeof (uint8_t));
+
+            broadcast_send(&bc);
+            max_total_packet += 1;
+
+            //        printf("m number :%d \n", max_total_packet);
+            if (max_total_packet >= MAX_REQUESTS_SEND) {
+                send_packets_to_sink();
+                max_total_packet = 0;
+//                clean_list();
+            }
+
+            //        int nbrs = collect_neighbor_list_num(&tc.neighbor_list);
+            //        int i;
+            //        for (i = 0; i < nbrs; ++i) {
+            //            struct collect_neighbor* cn = collect_neighbor_list_get(&tc.neighbor_list, i);
+            //            printf("n: %d.%d", cn->addr.u8[0], cn->addr.u8[1]);
+            //        }
+            //        printf("\n");
+
+        }
+    }
     broadcast_close(&bc);
 
     PROCESS_END();
