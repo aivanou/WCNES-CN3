@@ -49,7 +49,7 @@ extern "C" {
     static void add_or_update_neighbor(rimeaddr_t addr, uint8_t total_packets, uint8_t lost_packets,
             uint8_t rmes_id, uint16_t lqi, uint16_t rssi, uint16_t etx, uint32_t etx_accumulator);
 
-    static datacom_neighbor_t* init_neighbor(rimeaddr_t addr, uint8_t total_packets, uint8_t lost_packets,
+    static datacom_neighbor_t init_neighbor(rimeaddr_t addr, uint8_t total_packets, uint8_t lost_packets,
             uint8_t rmes_id, uint16_t lqi, uint16_t rssi, uint16_t etx, uint32_t etx_accumulator);
 
     static void print_n();

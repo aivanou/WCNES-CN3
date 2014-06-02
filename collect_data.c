@@ -15,19 +15,21 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define MAX_REQUESTS_SEND 1
+#define MAX_REQUESTS_SEND 4
 
 // PA_LEVEL, 7 = -15dBm
 #define DEFAULT_TX_POWER 7
 
+
 static int SINK_LOW_VALUE = 1;
 static int SINK_HIGH_VALUE = 0;
+static const int MAX_NEIGHBORS = 8;
 
 static struct collect_conn tc;
 static struct broadcast_conn bc;
 
-static datacom_neighbor_t* neighbor_list = NULL;
-static uint8_t neighbor_list_size = 0;
+static datacom_neighbor_t neighbor_list[8];
+static int nlist_count = 0;
 
 static uint8_t current_message_id = 0;
 
@@ -145,7 +147,7 @@ PROCESS_THREAD(example_collect_process, ev, data)
     broadcast_open(&bc, 129, &broactcast_calls);
 
     /* Allow some time for the network to settle. */
-    etimer_set(&et, 25 * CLOCK_SECOND);
+    etimer_set(&et, 5 * CLOCK_SECOND);
     PROCESS_WAIT_UNTIL(etimer_expired(&et));
 
     if (rimeaddr_node_addr.u8[0] == SINK_LOW_VALUE &&
@@ -172,16 +174,8 @@ PROCESS_THREAD(example_collect_process, ev, data)
             if (max_total_packet >= MAX_REQUESTS_SEND) {
                 send_packets_to_sink();
                 max_total_packet = 0;
-//                clean_list();
+                clean_list();
             }
-
-            //        int nbrs = collect_neighbor_list_num(&tc.neighbor_list);
-            //        int i;
-            //        for (i = 0; i < nbrs; ++i) {
-            //            struct collect_neighbor* cn = collect_neighbor_list_get(&tc.neighbor_list, i);
-            //            printf("n: %d.%d", cn->addr.u8[0], cn->addr.u8[1]);
-            //        }
-            //        printf("\n");
 
         }
     }
@@ -195,7 +189,7 @@ PROCESS_THREAD(example_collect_process, ev, data)
 static void
 send_packets_to_sink()
 {
-    //    printf("sending packet lost information to the sink \n");
+    printf("sending packet lost information to the sink \n");
     int i;
     uint8_t curr_packet_length = 0;
 
@@ -204,27 +198,24 @@ send_packets_to_sink()
 
     memcpy(addr + curr_packet_length, (void*) sink_packet_tag, sink_tag_length);
     curr_packet_length += sink_tag_length;
-    memcpy(addr + curr_packet_length, (void*) &neighbor_list_size, sizeof (uint8_t));
+    memcpy(addr + curr_packet_length, (void*) &nlist_count, sizeof (uint8_t));
     curr_packet_length += sizeof (uint8_t);
 
-    printf("\n");
-    datacom_neighbor_t* curr_el = neighbor_list;
-    for (i = 0; i < neighbor_list_size; ++i) {
-        if (curr_el == NULL)
-            break;
+    for (i = 0; i < nlist_count; ++i) {
+
+        datacom_neighbor_t curr_el = neighbor_list[i];
         datacom_packet_lost_inf_t p;
-        p.from = curr_el->sender;
+        p.from = curr_el.sender;
         p.to = rimeaddr_node_addr;
-        p.lost_packets = curr_el->lost_packets;
-        p.total_packets = curr_el->total_packets;
-        p.lqi = curr_el->lqi;
-        p.rssi = curr_el->rssi;
-        p.etx = curr_el->etx;
-        p.etx_accumulator = curr_el->etx_accumulator;
+        p.lost_packets = curr_el.lost_packets;
+        p.total_packets = curr_el.total_packets;
+        p.lqi = curr_el.lqi;
+        p.rssi = curr_el.rssi;
+        p.etx = curr_el.etx;
+        p.etx_accumulator = curr_el.etx_accumulator;
         printf("from: %d.%d to %d.%d %d %d  ;", p.from.u8[0], p.from.u8[1], p.to.u8[0], p.to.u8[1], p.lqi, p.rssi);
         memcpy(addr + curr_packet_length, (void*) &p, sizeof (datacom_packet_lost_inf_t));
         curr_packet_length += sizeof (datacom_packet_lost_inf_t);
-        curr_el = curr_el->next;
     }
     printf("\n");
     packetbuf_set_datalen(curr_packet_length);
@@ -238,51 +229,49 @@ add_or_update_neighbor(rimeaddr_t addr, uint8_t total_packets,
                        uint8_t lost_packets, uint8_t rmes_id,
                        uint16_t lqi, uint16_t rssi, uint16_t etx, uint32_t etx_accumulator)
 {
-    datacom_neighbor_t* curr_element = neighbor_list;
-    datacom_neighbor_t* prev_element = NULL;
-
-    if (curr_element == NULL) {
-        neighbor_list = init_neighbor(addr, total_packets, lost_packets, rmes_id, lqi, rssi, etx, etx_accumulator);
-        neighbor_list->next = NULL;
-        neighbor_list_size += 1;
+    if (nlist_count == 0) {
+        datacom_neighbor_t neighbor = init_neighbor(addr, total_packets, lost_packets, rmes_id, lqi, rssi, etx, etx_accumulator);
+        neighbor_list[nlist_count] = neighbor;
+        nlist_count += 1;
         return;
     }
 
-    while (curr_element != NULL) {
-        if (rimeaddr_cmp(&curr_element->sender, &addr)) {
-            curr_element->lost_packets = lost_packets;
-            curr_element->total_packets = total_packets;
-            curr_element->last_packet_id = rmes_id;
-            curr_element->lqi = lqi;
-            curr_element->rssi = rssi;
-            curr_element->etx = etx;
-            curr_element->etx_accumulator = etx_accumulator;
+    if (nlist_count > 8)
+        return;
+    int i;
+    for (i = 0; i < nlist_count; ++i) {
+        if (rimeaddr_cmp(&neighbor_list[i].sender, &addr)) {
+            neighbor_list[i].lost_packets = lost_packets;
+            neighbor_list[i].total_packets = total_packets;
+            neighbor_list[i].last_packet_id = rmes_id;
+            neighbor_list[i].lqi = lqi;
+            neighbor_list[i].rssi = rssi;
+            neighbor_list[i].etx = etx;
+            neighbor_list[i].etx_accumulator = etx_accumulator;
             return;
         }
-        prev_element = curr_element;
-        curr_element = curr_element->next;
     }
 
-    prev_element->next = init_neighbor(addr, total_packets, lost_packets, rmes_id, lqi, rssi, etx, etx_accumulator);
-    prev_element->next->next = NULL;
-    neighbor_list_size += 1;
+    datacom_neighbor_t neighbor = init_neighbor(addr, total_packets, lost_packets, rmes_id, lqi, rssi, etx, etx_accumulator);
+    neighbor_list[nlist_count] = neighbor;
+    nlist_count += 1;
 }
 
-static datacom_neighbor_t*
+static datacom_neighbor_t
 init_neighbor(rimeaddr_t addr, uint8_t total_packets,
               uint8_t lost_packets, uint8_t rmes_id,
               uint16_t lqi, uint16_t rssi, uint16_t etx, uint32_t etx_accumulator)
 {
-    datacom_neighbor_t* n = (datacom_neighbor_t*) malloc(sizeof (datacom_neighbor_t));
-    n->total_packets = total_packets;
-    n->lost_packets = lost_packets;
-    n->last_packet_id = rmes_id;
-    n->lqi = lqi;
-    n->rssi = rssi;
-    n->etx = etx;
-    n->etx_accumulator = etx_accumulator;
-    n->next = NULL;
-    n->sender = addr;
+    datacom_neighbor_t n;
+    n.total_packets = total_packets;
+    n.lost_packets = lost_packets;
+    n.last_packet_id = rmes_id;
+    n.lqi = lqi;
+    n.rssi = rssi;
+    n.etx = etx;
+    n.etx_accumulator = etx_accumulator;
+    n.next = NULL;
+    n.sender = addr;
     return n;
 }
 
@@ -314,15 +303,6 @@ print_n()
 static void
 clean_list()
 {
-    if (neighbor_list == NULL)
-        return;
-    datacom_neighbor_t* curr_element = neighbor_list;
-    datacom_neighbor_t* prev_element = NULL;
-    while (curr_element != NULL) {
-        prev_element = curr_element;
-        curr_element = curr_element->next;
-        free(prev_element);
-    }
-    neighbor_list = NULL;
+    nlist_count = 0;
 }
 
