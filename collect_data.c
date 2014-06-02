@@ -18,7 +18,7 @@
 #define MAX_REQUESTS_SEND 4
 
 // PA_LEVEL, 7 = -15dBm
-#define DEFAULT_TX_POWER 7
+#define DEFAULT_TX_POWER 3
 
 
 static int SINK_LOW_VALUE = 75;
@@ -127,7 +127,7 @@ PROCESS_THREAD(example_collect_process, ev, data)
     PROCESS_BEGIN();
 
     // Set TX power
-    //    cc2420_set_txpower(DEFAULT_TX_POWER);
+    cc2420_set_txpower(DEFAULT_TX_POWER);
 
     //    printf("%d.%d: packetbuf txpower=%d\n", 
     //        rimeaddr_node_addr.u8[0], rimeaddr_node_addr.u8[1],
