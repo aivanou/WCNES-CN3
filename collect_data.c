@@ -21,7 +21,7 @@
 #define DEFAULT_TX_POWER 7
 
 
-static int SINK_LOW_VALUE = 1;
+static int SINK_LOW_VALUE = 75;
 static int SINK_HIGH_VALUE = 0;
 static const int MAX_NEIGHBORS = 8;
 
