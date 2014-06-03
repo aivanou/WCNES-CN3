@@ -160,7 +160,7 @@ PROCESS_THREAD(example_collect_process, ev, data)
             current_message_id += 1;
             etimer_set(&et, 5 * CLOCK_SECOND);
             PROCESS_WAIT_UNTIL(etimer_expired(&et));
-
+            
             packetbuf_clear();
             void* addr = packetbuf_dataptr();
             memcpy(addr, broadcast_tag, strlen(broadcast_tag));
@@ -170,6 +170,8 @@ PROCESS_THREAD(example_collect_process, ev, data)
             broadcast_send(&bc);
             max_total_packet += 1;
 
+            printf( "message id : %d   \n",current_message_id);
+            
             //        printf("m number :%d \n", max_total_packet);
             if (max_total_packet >= MAX_REQUESTS_SEND) {
                 send_packets_to_sink();
