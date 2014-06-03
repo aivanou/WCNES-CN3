@@ -127,7 +127,7 @@ PROCESS_THREAD(example_collect_process, ev, data)
     PROCESS_BEGIN();
 
     // Set TX power
-    cc2420_set_txpower(DEFAULT_TX_POWER);
+//    cc2420_set_txpower(DEFAULT_TX_POWER);
 
     //    printf("%d.%d: packetbuf txpower=%d\n", 
     //        rimeaddr_node_addr.u8[0], rimeaddr_node_addr.u8[1],

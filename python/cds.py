@@ -124,7 +124,8 @@ def cds_bd_c2(g):
 	for i in xrange(1,maxHop+1):
 		nodes_id = get_nodes_by_color_and_hop(g.nodes(),i,[2])
 		for nId in nodes_id:
-			black_nbrs = get_nodes_by_color_and_hop(g.neighbors(i),i-1,[2])
+
+			black_nbrs = get_nodes_by_color_and_hop(g.neighbors(nId),i-1,[2])
 			if len(black_nbrs) == 0:
 				# print nId,g.neighbors(nId)
 				max_node_id = max_weight_node(g,get_nodes_by_color_and_hop(g.neighbors(nId),i-1,[0,1]),[0,1])
@@ -221,49 +222,49 @@ def parseFile(fileName):
 				nodes[v].append(u)
 	return nodes
 
-g=nx.DiGraph()
-g.add_edges_from([(1,2),(1,3),(1,6),(1,7),(2,4),(4,5),(5,6),(6,7),(6,8),(7,9),(8,9),(9,10),\
-	              (2,1),(3,1),(6,1),(7,1),(4,2),(5,4),(6,5),(7,6),(8,6),(9,7),(9,8),(10,9)])
+# g=nx.DiGraph()
+# g.add_edges_from([(1,2),(1,3),(1,6),(1,7),(2,4),(4,5),(5,6),(6,7),(6,8),(7,9),(8,9),(9,10),\
+# 	              (2,1),(3,1),(6,1),(7,1),(4,2),(5,4),(6,5),(7,6),(8,6),(9,7),(9,8),(10,9)])
 
-for n in g.nodes():
-	g.node[n]['color']=0
+# for n in g.nodes():
+# 	g.node[n]['color']=0
 
 
-cds_set = cds_bd_c2(g)
+# cds_set = cds_bd_c2(g)
 
-drawGraph(g,"CDS_BD_C2",1)
+# drawGraph(g,"CDS_BD_C2",1)
 
-for n in g.nodes():
-	g.node[n]['color']=0
+# for n in g.nodes():
+# 	g.node[n]['color']=0
 
-icga(g,2,1)
+# icga(g,2,1)
 
-drawGraph(g,"ICGA",2)
-plt.show()
+# drawGraph(g,"ICGA",2)
+# plt.show()
 
-# if __name__ == "__main__":
+if __name__ == "__main__":
 
-# 	fname = "graph.txt"
+	fname = "graph.txt"
 
-# 	g=nx.DiGraph()
+	g=nx.DiGraph()
 
-# 	nodes= parseFile(fname)
+	nodes= parseFile(fname)
 	
-# 	for u,vs in nodes.items():
-# 		for v in vs:
-# 			g.add_edge(u,v)
+	for u,vs in nodes.items():
+		for v in vs:
+			g.add_edge(u,v)
 
-# 	for n in g.nodes():
-# 		g.node[n]['color']=0
+	for n in g.nodes():
+		g.node[n]['color']=0
 
-# 	cds_set = cds_bd_c2(g)
-# 	print cds_set
+	cds_set = cds_bd_c2(g)
+	print cds_set
 
-# 	drawGraph(g,"CDS_BD_C2",1)
-# 	for n in g.nodes():
-# 		g.node[n]['color']=0
+	drawGraph(g,"CDS_BD_C2",1)
+	for n in g.nodes():
+		g.node[n]['color']=0
 	
-# 	icga(g,2,1)
-# 	drawGraph(g,"ICGA",2)
+	icga(g,2,1)
+	drawGraph(g,"ICGA",2)
 
-# 	plt.show()
+	plt.show()
