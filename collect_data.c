@@ -147,7 +147,7 @@ PROCESS_THREAD(example_collect_process, ev, data)
     broadcast_open(&bc, 129, &broactcast_calls);
 
     /* Allow some time for the network to settle. */
-    etimer_set(&et, 5 * CLOCK_SECOND);
+    etimer_set(&et, 25 * CLOCK_SECOND);
     PROCESS_WAIT_UNTIL(etimer_expired(&et));
 
     if (rimeaddr_node_addr.u8[0] == SINK_LOW_VALUE &&
