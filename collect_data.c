@@ -51,7 +51,7 @@ recv(const rimeaddr_t *originator, uint8_t seqno, uint8_t hops)
         current_offset += sizeof (uint8_t);
 
         datacom_packet_lost_inf_t* p = (datacom_packet_lost_inf_t*) malloc(sizeof (datacom_packet_lost_inf_t) * npackets);
-        printf("Sink received %d packets\n", npackets);
+        printf("Sink received %d packets from %d.%d\n", npackets, originator->u8[0], originator->u8[1]);
         for (i = 0; i < npackets; ++i) {
             memcpy(&p[i], addr + current_offset, sizeof (datacom_packet_lost_inf_t));
             current_offset += sizeof (datacom_packet_lost_inf_t);
@@ -77,9 +77,9 @@ broadcast_receive(struct broadcast_conn* c, const rimeaddr_t* from)
         rmes_id = ((uint8_t*) packetbuf_dataptr() + strlen(broadcast_tag))[0];
     }
 
-        printf("%d.%d:  broadcast from %d.%d  to me, message id: %d \n",
-               rimeaddr_node_addr.u8[0], rimeaddr_node_addr.u8[1],
-               from->u8[0], from->u8[1], rmes_id);
+    printf("%d.%d:  broadcast from %d.%d  to me, message id: %d \n",
+           rimeaddr_node_addr.u8[0], rimeaddr_node_addr.u8[1],
+           from->u8[0], from->u8[1], rmes_id);
 
     uint16_t lqi = packetbuf_attr(PACKETBUF_ATTR_LINK_QUALITY);
     uint16_t rssi = packetbuf_attr(PACKETBUF_ATTR_RSSI);
@@ -127,7 +127,7 @@ PROCESS_THREAD(example_collect_process, ev, data)
     PROCESS_BEGIN();
 
     // Set TX power
-//    cc2420_set_txpower(DEFAULT_TX_POWER);
+    //    cc2420_set_txpower(DEFAULT_TX_POWER);
 
     //    printf("%d.%d: packetbuf txpower=%d\n", 
     //        rimeaddr_node_addr.u8[0], rimeaddr_node_addr.u8[1],
@@ -160,7 +160,7 @@ PROCESS_THREAD(example_collect_process, ev, data)
             current_message_id += 1;
             etimer_set(&et, 5 * CLOCK_SECOND);
             PROCESS_WAIT_UNTIL(etimer_expired(&et));
-            
+
             packetbuf_clear();
             void* addr = packetbuf_dataptr();
             memcpy(addr, broadcast_tag, strlen(broadcast_tag));
@@ -170,8 +170,8 @@ PROCESS_THREAD(example_collect_process, ev, data)
             broadcast_send(&bc);
             max_total_packet += 1;
 
-            printf( "message id : %d   \n",current_message_id);
-            
+            printf("message id : %d   \n", current_message_id);
+
             //        printf("m number :%d \n", max_total_packet);
             if (max_total_packet >= MAX_REQUESTS_SEND) {
                 send_packets_to_sink();
@@ -191,7 +191,7 @@ PROCESS_THREAD(example_collect_process, ev, data)
 static void
 send_packets_to_sink()
 {
-    printf("sending packet lost information to the sink \n");
+    printf("sending packets to the sink \n");
     int i;
     uint8_t curr_packet_length = 0;
 
@@ -222,7 +222,7 @@ send_packets_to_sink()
     printf("\n");
     packetbuf_set_datalen(curr_packet_length);
 
-    collect_send(&tc, 4);
+    collect_send(&tc, 6);
 
 }
 
