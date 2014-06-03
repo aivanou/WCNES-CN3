@@ -77,9 +77,9 @@ broadcast_receive(struct broadcast_conn* c, const rimeaddr_t* from)
         rmes_id = ((uint8_t*) packetbuf_dataptr() + strlen(broadcast_tag))[0];
     }
 
-    //    printf("%d.%d:  broadcast from %d.%d  to me, message id: %d \n",
-    //           rimeaddr_node_addr.u8[0], rimeaddr_node_addr.u8[1],
-    //           from->u8[0], from->u8[1], rmes_id);
+        printf("%d.%d:  broadcast from %d.%d  to me, message id: %d \n",
+               rimeaddr_node_addr.u8[0], rimeaddr_node_addr.u8[1],
+               from->u8[0], from->u8[1], rmes_id);
 
     uint16_t lqi = packetbuf_attr(PACKETBUF_ATTR_LINK_QUALITY);
     uint16_t rssi = packetbuf_attr(PACKETBUF_ATTR_RSSI);
