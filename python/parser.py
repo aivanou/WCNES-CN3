@@ -18,31 +18,58 @@ def extractMax(V, distances):
 		V.remove(node)
 	return node
 
+def extractMin(V, distances):
+	minVal = float('inf')
+	node = None
+	for u in V:
+		if distances[u] < minVal:
+			minVal = distances[u]
+			node = u
+	if node != None:
+		# Remove the vertex
+		V.remove(node)
+	return node
 
 # Returns the minimum spanning tree of the tree G with the given sink
 # If the number of edges in the resulting MST is less than the number 
 # of nodes None will be returned.
-def dijkstras(G, sink):
+def dijkstras(G, sink, addition = False):
 	# The unvisited vertices
 	V = [n for n in G.nodes()]
-	distances = dict([(n, -100000.0) for n in G.nodes()]) # V
+	if addition:
+		distances = dict([(n, float('inf')) for n in G.nodes()]) # V
+		distances[sink] = 0 # The distance as reliability
+	else:
+		distances = dict([(n, -100000.0) for n in G.nodes()]) # V
+		distances[sink] = 1.0 # The distance as reliability
 	parents = dict([(n, None) for n in G.nodes()])
-	distances[sink] = 1.0 # The distance as reliability
 	hops = dict([(n, 0) for n in G.nodes()])
 	while len(V) > 0:
 		# Get the node with the lowest value from the unvisited vertices
-		u = extractMax(V, distances)
+		if addition:
+			u = extractMin(V, distances)
+		else:
+			u = extractMax(V, distances)
 		if u != None:
 			# Get all edges to the edge u.
 			for v, parent, data in G.edges(data=True):
 				if parent == u:
-					d = data['weight'] * distances[u]
 					# If the distance is better than before, update it and the 
 					# parent of the node
-					if v in V and d > distances[v]:
-						distances[v] = d
-						parents[v] = u
-						hops[v] = hops[u] + 1
+					if addition:
+						d = data['weight'] + distances[u]
+						if v in V and d < distances[v]:
+							distances[v] = d
+							parents[v] = u
+							hops[v] = hops[u] + 1
+					else:
+						d = data['weight'] * distances[u]
+						if v in V and d > distances[v]:
+							distances[v] = d
+							parents[v] = u
+							hops[v] = hops[u] + 1
+
+					
 		else:
 			# an error occured
 			break
@@ -95,10 +122,13 @@ def normalizeData(d):
 		# diff = 53
 		# - 3 -> (53 + (- 3)) / 50 = 50 / 50 = 1.0
 		# -50 -> (53 + (-50)) / 50 = 50 /  3 = 0.06
-		diff = abs(maxVal) + abs(minVal)
+		diff = maxVal - minVal
 		for index in d:
-			val = d[index]
-			normalizedData[index] = (diff + val) / abs(minVal)
+			if diff == 0:
+				normalizedData[index] = 1
+			else:
+				val = d[index]
+				normalizedData[index] = 100 - ((maxVal - val) * 100) / diff
 	else:
 		# Standard normalization
 		for index in d:
@@ -128,7 +158,10 @@ def parseFile(fileName):
 		v = data[1].strip()
 		lqi[(u, v)] = float(data[5])
 		rssi[(u, v)] = float(data[6])
-		etx[(u, v)] = float(data[7])
+		if float(data[7]) > 0:
+			etx[(u, v)] = float(data[7])
+		else:
+			etx[(u, v)] = 16
 	
 	return ("75.0", rssi, lqi, etx)
 
@@ -159,15 +192,14 @@ if __name__ == "__main__":
 	etxGraph = nx.DiGraph()  # The graph holding data about ETX
 	for u, v in etx:
 		etxGraph.add_edge(u, v, weight = etx[(u, v)])
-
 	bestRssiMst = None
 	bestRssiVal = 0
 	bestRssiSink = None
 	bestRssiDiameter = float('inf')
 	for sink in rssiGraph.nodes():
 		(mst, val, diameter) = dijkstras(rssiGraph, sink)
-		if mst != None or (val == bestRssiVal and diameter < bestRssiDiameter):
-			if val > bestRssiVal:
+		if mst != None:
+			if val > bestRssiVal or (val == bestRssiVal and diameter < bestRssiDiameter):
 				bestRssiMst = mst
 				bestRssiVal = val
 				bestRssiSink = sink
@@ -185,13 +217,13 @@ if __name__ == "__main__":
 				bestLqiSink = sink
 
 	bestEtxMst = None
-	bestEtxVal = 0
+	bestEtxVal = float('inf')
 	bestEtxSink = None
 	bestEtxDiameter = float('inf')
 	for sink in etxGraph.nodes():
-		(mst, val, diameter) = dijkstras(etxGraph, sink)
+		(mst, val, diameter) = dijkstras(etxGraph, sink, True)
 		if mst != None:
-			if val > bestEtxVal or (val == bestEtxVal and diameter < bestEtxDiameter):
+			if val < bestEtxVal or (val == bestEtxVal and diameter < bestEtxDiameter):
 				bestEtxMst = mst
 				bestEtxVal = val
 				bestEtxSink = sink
