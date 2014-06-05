@@ -94,18 +94,15 @@ def dijkstras(G, sink, addition = False):
 # The weight of the edges are outputted close to the node they go from, the originating node.
 def drawGraph(G, title, n):
 	# Find the sub-optimal edges
-	pos = nx.spring_layout(G) # positions for all nodes
+	pos = nx.spring_layout(G, iterations=100) # positions for all nodes
 	#plt.subplot(220 + n)
 	plt.title(title)
 	plt.axis('off')
 	nx.draw_networkx_labels(G, pos, font_size = 10, font_family = 'sans-serif')
-	# nodes
-	nx.draw_networkx_nodes(G, pos, cmap = plt.get_cmap('jet'), node_size=350)
-	# edges
+	nx.draw_networkx_nodes(G, pos, node_size=500)
 	nx.draw_networkx_edges(G, pos, edge_color = 'black', arrows = True)
-	# edge labels
-	edge_labels=dict([((u,v,),"%.2f" % float(d['weight'])) for u,v,d in G.edges(data=True)])
 
+	edge_labels=dict([((u,v,),"%.2f" % float(d['weight'])) for u,v,d in G.edges(data=True)])
 	nx.draw_networkx_edge_labels(G, pos, edge_labels=edge_labels, label_pos=0.75, font_color='black')
 	
 
@@ -232,22 +229,26 @@ if __name__ == "__main__":
 	print "Best LQI sink: " , bestLqiSink
 	print "Best ETX sink: " , bestEtxSink
 
-	# Draw the graphs and the MSTs
-	plt.subplot(231)
+	# Draw the graphphs and the MSTs
+	plt.figure(1)
+	plt.subplot(121)
 	drawGraph(rssiGraph, 'RSSI Graph', 0)
-	plt.subplot(232)
-	drawGraph(lqiGraph, 'LQI Graph', 0)
-	plt.subplot(233)
-	drawGraph(etxGraph, 'ETX Graph', 0)
-
 	if bestRssiMst != None:
-		plt.subplot(234)
+		plt.subplot(122)
 		drawGraph(bestRssiMst, 'RSSI MST', 0)
+
+	plt.figure(2)
+	plt.subplot(121)
+	drawGraph(lqiGraph, 'LQI Graph', 0)
 	if bestLqiMst != None:
-		plt.subplot(235)
+		plt.subplot(122)
 		drawGraph(bestLqiMst, 'LQI MST', 0)
+
+	plt.figure(3)
+	#plt.subplot(121)
+	drawGraph(etxGraph, 'ETX Graph', 0)
 	if bestEtxMst != None:
-		plt.subplot(236)
+		plt.subplot(111)
 		drawGraph(bestEtxMst, 'ETX MST', 0)
 
 	#Calculate the betweeness centrality of the nodes.
