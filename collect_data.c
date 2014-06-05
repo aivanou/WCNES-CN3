@@ -21,7 +21,7 @@
 #define DEFAULT_TX_POWER 3
 
 
-static int SINK_LOW_VALUE = 75;
+static int SINK_LOW_VALUE = 1;
 static int SINK_HIGH_VALUE = 0;
 static const int MAX_NEIGHBORS = 8;
 
@@ -77,9 +77,9 @@ broadcast_receive(struct broadcast_conn* c, const rimeaddr_t* from)
         rmes_id = ((uint8_t*) packetbuf_dataptr() + strlen(broadcast_tag))[0];
     }
 
-    printf("%d.%d:  broadcast from %d.%d  to me, message id: %d \n",
-           rimeaddr_node_addr.u8[0], rimeaddr_node_addr.u8[1],
-           from->u8[0], from->u8[1], rmes_id);
+//    printf("%d.%d:  broadcast from %d.%d  to me, message id: %d \n",
+//           rimeaddr_node_addr.u8[0], rimeaddr_node_addr.u8[1],
+//           from->u8[0], from->u8[1], rmes_id);
 
     uint16_t lqi = packetbuf_attr(PACKETBUF_ATTR_LINK_QUALITY);
     uint16_t rssi = packetbuf_attr(PACKETBUF_ATTR_RSSI);
@@ -90,22 +90,22 @@ broadcast_receive(struct broadcast_conn* c, const rimeaddr_t* from)
     if (cn != NULL) {
         etx = cn->rtmetric;
         etx_accumulator = cn->le.etx_accumulator;
-        printf("my rtmetric:  %d   etx_accumulator: %d  with link %d.%d\n", etx, etx_accumulator, cn->addr.u8[0], cn->addr.u8[1]);
+//        printf("my rtmetric:  %d   etx_accumulator: %d  with link %d.%d\n", etx, etx_accumulator, cn->addr.u8[0], cn->addr.u8[1]);
     }
 
-    datacom_neighbor_t* n = get_neighbor_by_rimeaddr(*from);
-    if (n == NULL) {
+    int n_id = get_neighbor_by_rimeaddr(*from);
+    if (n_id == -1) {
         add_or_update_neighbor(*from, 0, 0, rmes_id, lqi, rssi, etx, etx_accumulator);
     }
-    else if (n->last_packet_id < rmes_id) {
-        n->lost_packets += rmes_id - n->last_packet_id - 1;
+    else if (neighbor_list[n_id].last_packet_id < rmes_id) {
+        neighbor_list[n_id].lost_packets += rmes_id - neighbor_list[n_id].last_packet_id - 1;
         //        printf("%d.%d total packets: %d  lost packets: %d  %d %d\n", n->sender.u8[0], n->sender.u8[1],
         //               n->total_packets, n->lost_packets, rmes_id, n->last_packet_id);
-        n->total_packets = rmes_id;
-        add_or_update_neighbor(n->sender, n->total_packets, n->lost_packets, rmes_id, lqi, rssi, etx, etx_accumulator);
+        neighbor_list[n_id].total_packets = rmes_id;
+        add_or_update_neighbor(neighbor_list[n_id].sender, neighbor_list[n_id].total_packets, neighbor_list[n_id].lost_packets, rmes_id, lqi, rssi, etx, etx_accumulator);
     }
     else {
-        add_or_update_neighbor(n->sender, 0, 0, rmes_id, lqi, rssi, etx, etx_accumulator);
+        add_or_update_neighbor(neighbor_list[n_id].sender, 0, 0, rmes_id, lqi, rssi, etx, etx_accumulator);
     }
 
     //    print_n();
@@ -277,17 +277,20 @@ init_neighbor(rimeaddr_t addr, uint8_t total_packets,
     return n;
 }
 
-static datacom_neighbor_t*
+static int
 get_neighbor_by_rimeaddr(rimeaddr_t addr)
 {
-    datacom_neighbor_t* head = neighbor_list;
-    while (head != NULL) {
-        if (rimeaddr_cmp(&head->sender, &addr)) {
-            return head;
+    if (nlist_count <= 0)
+        return -1;
+    int i;
+    datacom_neighbor_t head = neighbor_list[0];
+    for (i = 0; i < nlist_count; ++i) {
+        if (rimeaddr_cmp(&neighbor_list[i].sender, &addr)) {
+            return i;
         }
-        head = head->next;
     }
-    return NULL;
+
+    return -1;
 }
 
 static void

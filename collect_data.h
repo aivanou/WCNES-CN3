@@ -45,7 +45,7 @@ extern "C" {
     static void send_packets_to_sink();
     static void clean_list();
 
-    static datacom_neighbor_t* get_neighbor_by_rimeaddr(rimeaddr_t addr);
+    static int get_neighbor_by_rimeaddr(rimeaddr_t addr);
     static void add_or_update_neighbor(rimeaddr_t addr, uint8_t total_packets, uint8_t lost_packets,
             uint8_t rmes_id, uint16_t lqi, uint16_t rssi, uint16_t etx, uint32_t etx_accumulator);
 
